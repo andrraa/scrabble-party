@@ -2,6 +2,21 @@
 	import type { MoveHistoryItem } from '../types';
 
 	let { history = [] }: { history: MoveHistoryItem[] } = $props();
+
+	// Calculate highest scoring word in the match
+	const bestWord = $derived.by(() => {
+		let best: { word: string; score: number; playerName: string } | null = null;
+		for (const item of history) {
+			if (item.type === 'PLAY' && item.words) {
+				for (const w of item.words) {
+					if (!best || w.score > best.score) {
+						best = { word: w.word, score: w.score, playerName: item.playerName };
+					}
+				}
+			}
+		}
+		return best;
+	});
 </script>
 
 <div class="flex flex-col h-full bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-2xs overflow-hidden">
@@ -9,6 +24,20 @@
 		<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Game History</h3>
 		<span class="text-[11px] text-slate-400 font-medium">{history.length} moves</span>
 	</div>
+
+	<!-- Best Word Banner (if words have been played) -->
+	{#if bestWord}
+		<div class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-amber-100/80 border border-amber-300 text-xs mb-2 shrink-0 shadow-2xs">
+			<div class="flex items-center gap-1.5 min-w-0">
+				<span>👑</span>
+				<span class="text-[11px] font-semibold text-amber-800 shrink-0">Best Word:</span>
+				<span class="font-mono font-bold text-amber-950 truncate">{bestWord.word}</span>
+			</div>
+			<div class="flex items-center gap-1 text-amber-950 font-bold shrink-0">
+				<span>+{bestWord.score} pts</span>
+			</div>
+		</div>
+	{/if}
 
 	{#if history.length === 0}
 		<div class="flex-1 flex items-center justify-center text-center p-4">

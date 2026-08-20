@@ -16,7 +16,8 @@
 		onOpenSwap,
 		onPass,
 		onPlay,
-		onSendEmote
+		onSendEmote,
+		onReorderRack
 	}: {
 		rack: ScrabbleTile[];
 		selectedTileId?: string | null;
@@ -31,42 +32,93 @@
 		onPass: () => void;
 		onPlay: () => void;
 		onSendEmote?: (emote: string) => void;
+		onReorderRack?: (newRack: ScrabbleTile[]) => void;
 	} = $props();
 
 	const EMOTES = ['👏 Nice!', '🤔 Thinking', '🔥 Wow', '👍 GG', '🎯 Boom!'];
+	let draggedRackIdx = $state<number | null>(null);
 
-	function handleDragStart(e: DragEvent, tile: ScrabbleTile) {
+	function handleDragStart(e: DragEvent, tile: ScrabbleTile, index: number) {
+		draggedRackIdx = index;
 		if (e.dataTransfer) {
 			e.dataTransfer.setData('application/json', JSON.stringify(tile));
+			e.dataTransfer.setData('text/rack-index', index.toString());
 			e.dataTransfer.effectAllowed = 'move';
+		}
+		onSelectTile(tile);
+	}
+
+	function handleRackSlotDrop(e: DragEvent, targetIdx: number) {
+		e.preventDefault();
+		const fromRackIdxStr = e.dataTransfer?.getData('text/rack-index');
+		if (fromRackIdxStr !== undefined && fromRackIdxStr !== '') {
+			const fromIdx = parseInt(fromRackIdxStr, 10);
+			if (!isNaN(fromIdx) && fromIdx !== targetIdx && onReorderRack) {
+				const newRack = [...rack];
+				const [moved] = newRack.splice(fromIdx, 1);
+				if (moved) {
+					newRack.splice(targetIdx, 0, moved);
+					onReorderRack(newRack);
+				}
+			}
+		}
+		draggedRackIdx = null;
+	}
+
+	function handleRackSlotDragOver(e: DragEvent) {
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleTileClick(tile: ScrabbleTile, index: number) {
+		// If another tile in rack is already selected and we click a second tile in rack, swap them!
+		if (selectedTileId && selectedTileId !== tile.id && onReorderRack) {
+			const fromIdx = rack.findIndex((t) => t.id === selectedTileId);
+			if (fromIdx !== -1) {
+				const newRack = [...rack];
+				const temp = newRack[fromIdx];
+				newRack[fromIdx] = newRack[index];
+				newRack[index] = temp;
+				onReorderRack(newRack);
+				onSelectTile(tile);
+				return;
+			}
 		}
 		onSelectTile(tile);
 	}
 </script>
 
 <div class="flex flex-col items-center gap-1.5 sm:gap-2 w-full max-w-[min(100%,500px,calc(100vh-270px))] mx-auto mt-1 sm:mt-1.5">
-	<!-- Fixed 7-Slot Tile Rack Stand -->
+	<!-- Fixed 7-Slot Tile Rack Stand with Drag-to-Reorder / Click-to-Swap -->
 	<div class="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#4a3525] rounded-xl shadow-inner border border-[#3b2a1d] w-full items-center justify-items-center min-h-[48px] sm:min-h-[56px] md:min-h-[64px]">
 		{#each Array(7) as _, index}
 			{@const tile = rack[index]}
-			{#if tile}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					draggable={isTurn}
-					ondragstart={(e) => handleDragStart(e, tile)}
-					class="w-full flex items-center justify-center cursor-grab active:cursor-grabbing"
-				>
-					<Tile
-						{tile}
-						size="normal"
-						isSelected={selectedTileId === tile.id}
-						onclick={() => onSelectTile(tile)}
-					/>
-				</div>
-			{:else}
-				<!-- Empty slot placeholder -->
-				<div class="w-full max-w-[42px] sm:max-w-[48px] md:max-w-[54px] aspect-[4/5] rounded-md border border-[#3b2a1d]/60 bg-[#3a281a]/50"></div>
-			{/if}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="w-full flex items-center justify-center aspect-[4/5] rounded-md transition-all duration-75"
+				ondragover={handleRackSlotDragOver}
+				ondrop={(e) => handleRackSlotDrop(e, index)}
+			>
+				{#if tile}
+					<div
+						draggable="true"
+						ondragstart={(e) => handleDragStart(e, tile, index)}
+						class="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
+					>
+						<Tile
+							{tile}
+							size="normal"
+							isSelected={selectedTileId === tile.id}
+							onclick={() => handleTileClick(tile, index)}
+						/>
+					</div>
+				{:else}
+					<!-- Empty slot placeholder -->
+					<div class="w-full max-w-[42px] sm:max-w-[48px] md:max-w-[54px] aspect-[4/5] rounded-md border border-[#3b2a1d]/60 bg-[#3a281a]/50"></div>
+				{/if}
+			</div>
 		{/each}
 	</div>
 

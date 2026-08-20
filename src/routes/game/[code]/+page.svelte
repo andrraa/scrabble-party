@@ -636,6 +636,9 @@
 							onPass={handlePassTurn}
 							onPlay={handlePlayWord}
 							onSendEmote={handleSendEmote}
+							onReorderRack={(newRack) => {
+								if (currentPlayer) currentPlayer.rack = newRack;
+							}}
 						/>
 					</div>
 				</div>

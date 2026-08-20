@@ -1,10 +1,12 @@
 import ScrabbleServer from './party/index';
 import type * as Party from 'partykit/server';
+import type { GameState } from './src/lib/types';
 
 export class ScrabbleDurableObject implements DurableObject {
 	state: DurableObjectState;
 	server: ScrabbleServer;
 	connections: Map<WebSocket, { id: string; state: any }> = new Map();
+	isStateLoaded: boolean = false;
 
 	constructor(state: DurableObjectState, env: any) {
 		this.state = state;
@@ -28,6 +30,8 @@ export class ScrabbleDurableObject implements DurableObject {
 				return undefined;
 			},
 			broadcast: (msg: string, without?: string[]) => {
+				// Persist state asynchronously on broadcast
+				this.persistState();
 				for (const [ws, data] of this.connections.entries()) {
 					if (!without || !without.includes(data.id)) {
 						try {
@@ -42,6 +46,29 @@ export class ScrabbleDurableObject implements DurableObject {
 		};
 
 		this.server = new ScrabbleServer(mockParty);
+	}
+
+	async ensureStateLoaded() {
+		if (this.isStateLoaded) return;
+		try {
+			const saved = await this.state.storage.get<GameState>('scrabble_state');
+			if (saved && saved.code) {
+				this.server.state = saved;
+			}
+		} catch (e) {
+			console.error('Error loading durable object state:', e);
+		}
+		this.isStateLoaded = true;
+	}
+
+	persistState() {
+		try {
+			if (this.server?.state) {
+				this.state.storage.put('scrabble_state', this.server.state);
+			}
+		} catch (e) {
+			console.error('Error saving durable object state:', e);
+		}
 	}
 
 	wrapConnection(ws: WebSocket, data: { id: string; state: any }): Party.Connection {
@@ -75,6 +102,8 @@ export class ScrabbleDurableObject implements DurableObject {
 	}
 
 	async fetch(request: Request): Promise<Response> {
+		await this.ensureStateLoaded();
+
 		const url = new URL(request.url);
 		const segments = url.pathname.split('/').filter(Boolean);
 		const roomId = (segments[segments.length - 1] || 'ROOM').toUpperCase();
@@ -82,7 +111,7 @@ export class ScrabbleDurableObject implements DurableObject {
 		this.server.state.code = roomId;
 
 		if (request.headers.get('Upgrade') !== 'websocket') {
-			return new Response(JSON.stringify({ status: 'ok', room: roomId }), {
+			return new Response(JSON.stringify({ status: 'ok', room: roomId, gameState: this.server.state.status }), {
 				headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 			});
 		}
@@ -99,14 +128,17 @@ export class ScrabbleDurableObject implements DurableObject {
 
 		this.server.onConnect?.(conn, { request } as any);
 
-		serverWs.addEventListener('message', (event) => {
+		serverWs.addEventListener('message', async (event) => {
+			await this.ensureStateLoaded();
 			const msgStr = typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data as any);
 			this.server.onMessage(msgStr, conn);
+			this.persistState();
 		});
 
 		serverWs.addEventListener('close', () => {
 			this.connections.delete(serverWs);
 			this.server.onClose?.(conn);
+			this.persistState();
 		});
 
 		serverWs.addEventListener('error', () => {
