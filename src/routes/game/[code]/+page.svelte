@@ -358,8 +358,8 @@
 
 	function handleCopyLink() {
 		if (typeof window !== 'undefined') {
-			const url = window.location.href;
-			navigator.clipboard.writeText(url);
+			const cleanUrl = `${window.location.origin}/game/${roomCode}`;
+			navigator.clipboard.writeText(cleanUrl);
 			showToast('Invite link copied to clipboard!', 'info');
 		}
 	}

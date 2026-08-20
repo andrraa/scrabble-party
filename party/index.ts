@@ -52,11 +52,15 @@ export default class ScrabbleServer implements Party.Server {
 
 	onClose(conn: Party.Connection) {
 		const playerId = (conn.state?.playerId as string) || this.connPlayerMap.get(conn.id);
-		if (playerId && this.state.players[playerId]) {
-			this.state.players[playerId].isConnected = false;
-			this.broadcastState();
-		}
 		this.connPlayerMap.delete(conn.id);
+
+		if (playerId && this.state.players[playerId]) {
+			const isStillConnected = [...this.connPlayerMap.values()].some((pid) => pid === playerId);
+			if (!isStillConnected) {
+				this.state.players[playerId].isConnected = false;
+				this.broadcastState();
+			}
+		}
 	}
 
 	onMessage(message: string, sender: Party.Connection) {
@@ -100,7 +104,7 @@ export default class ScrabbleServer implements Party.Server {
 	}
 
 	handleJoin(name: string, requestedPlayerId: string | undefined, conn: Party.Connection) {
-		const cleanName = (name || 'Player').trim().slice(0, 20);
+		let cleanName = (name || 'Player').trim().slice(0, 20);
 		let playerId = requestedPlayerId;
 
 		// 1. Reconnecting existing player
@@ -119,6 +123,13 @@ export default class ScrabbleServer implements Party.Server {
 		if (currentCount < 2) {
 			playerId = playerId || `p_${Math.random().toString(36).slice(2, 9)}`;
 			const isHost = currentCount === 0;
+
+			// If duplicate name in same room, disambiguate
+			const existingPlayers = Object.values(this.state.players);
+			const nameExists = existingPlayers.some((p) => p.name.toLowerCase() === cleanName.toLowerCase());
+			if (nameExists) {
+				cleanName = `${cleanName} 2`;
+			}
 
 			const newPlayer: Player = {
 				id: playerId,
