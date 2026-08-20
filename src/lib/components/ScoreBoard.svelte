@@ -92,8 +92,9 @@
 								class="fixed inset-0 z-40 bg-transparent"
 								onclick={() => (showEmotePicker = false)}
 							></div>
+							<!-- Popover shifted rightwards on mobile to prevent left-edge collision -->
 							<div
-								class="absolute top-full right-0 mt-1 z-50 p-1.5 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100"
+								class="absolute top-full -right-12 sm:right-0 mt-1.5 z-50 p-2 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl flex flex-wrap sm:flex-nowrap gap-1 w-[220px] sm:w-auto animate-in fade-in zoom-in-95 duration-100"
 							>
 								{#each ['👏 Nice!', '🤔 Thinking', '🔥 Wow', '👍 GG', '🎯 Boom!'] as emote}
 									<button
@@ -102,7 +103,7 @@
 											if (onSendEmote) onSendEmote(emote);
 											showEmotePicker = false;
 										}}
-										class="px-2 py-1 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-800 transition-colors whitespace-nowrap cursor-pointer"
+										class="px-2 py-1 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-800 transition-colors whitespace-nowrap cursor-pointer flex-1 sm:flex-initial text-center"
 									>
 										{emote}
 									</button>
