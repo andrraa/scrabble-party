@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="tileGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fffefc" />
+      <stop offset="100%" stop-color="#f5ede0" />
+    </linearGradient>
+    <filter id="tileShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#54381e" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Scrabble Tile Body -->
+  <rect
+    x="8"
+    y="8"
+    width="112"
+    height="112"
+    rx="24"
+    ry="24"
+    fill="url(#tileGrad)"
+    stroke="#d9cbb7"
+    stroke-width="3"
+    filter="url(#tileShadow)"
+  />
+
+  <!-- Letter 'S' -->
+  <text
+    x="60"
+    y="80"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Georgia, serif"
+    font-size="68"
+    font-weight="bold"
+    fill="#451a03"
+    text-anchor="middle"
+  >S</text>
+
+  <!-- Point Value '1' -->
+  <text
+    x="100"
+    y="105"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font-size="22"
+    font-weight="bold"
+    fill="#78350f"
+    text-anchor="end"
+  >1</text>
+</svg>
