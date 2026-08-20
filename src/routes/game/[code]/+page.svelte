@@ -246,12 +246,28 @@
 	}
 
 	// Mobile & Desktop Tap-to-Place Tile Interaction
-	function handleSelectRackTile(tile: ScrabbleTile) {
+	function handleSelectRackTile(tile: ScrabbleTile | null) {
 		if (!isMyTurn) return;
-		if (selectedRackTile?.id === tile.id) {
+		if (!tile || selectedRackTile?.id === tile.id) {
 			selectedRackTile = null;
 		} else {
 			selectedRackTile = tile;
+		}
+	}
+
+	function handleGlobalClick(e: MouseEvent) {
+		if (!selectedRackTile) return;
+		const target = e.target as HTMLElement | null;
+		if (!target) return;
+
+		// Check if click was inside the rack stand, board grid, buttons, or modals
+		const isBoard = target.closest('.scrabble-board-grid');
+		const isRack = target.closest('.grid-cols-7');
+		const isButton = target.closest('button');
+		const isModal = target.closest('.fixed');
+
+		if (!isBoard && !isRack && !isButton && !isModal) {
+			selectedRackTile = null;
 		}
 	}
 
@@ -399,6 +415,8 @@
 <svelte:head>
 	<title>Scrabble Room {roomCode}</title>
 </svelte:head>
+
+<svelte:window onclick={handleGlobalClick} />
 
 <main class="min-h-screen lg:h-screen lg:overflow-hidden bg-slate-50 flex flex-col p-2 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
 	<div class="max-w-6xl w-full mx-auto flex flex-col gap-2 sm:gap-3 flex-1 min-h-0">

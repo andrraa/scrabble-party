@@ -25,7 +25,7 @@
 		hasPending?: boolean;
 		canSwap?: boolean;
 		liveWordPreview?: { words: string[]; score: number; isValid: boolean; error?: string } | null;
-		onSelectTile: (tile: ScrabbleTile) => void;
+		onSelectTile: (tile: ScrabbleTile | null) => void;
 		onShuffle: () => void;
 		onRecall: () => void;
 		onOpenSwap: () => void;
@@ -73,7 +73,13 @@
 	}
 
 	function handleTileClick(tile: ScrabbleTile, index: number) {
-		// If another tile in rack is already selected and we click a second tile in rack, swap them!
+		// If clicking the same tile again -> toggle unselect!
+		if (selectedTileId === tile.id) {
+			onSelectTile(null);
+			return;
+		}
+
+		// If another tile in rack is already selected and we click a second tile in rack, swap their positions!
 		if (selectedTileId && selectedTileId !== tile.id && onReorderRack) {
 			const fromIdx = rack.findIndex((t) => t.id === selectedTileId);
 			if (fromIdx !== -1) {
