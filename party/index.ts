@@ -107,7 +107,7 @@ export default class ScrabbleServer implements Party.Server {
 		let cleanName = (name || 'Player').trim().slice(0, 20);
 		let playerId = requestedPlayerId;
 
-		// 1. Reconnecting existing player
+		// 1. Reconnecting existing player by ID
 		if (playerId && this.state.players[playerId]) {
 			this.state.players[playerId].name = cleanName || this.state.players[playerId].name;
 			this.state.players[playerId].isConnected = true;
@@ -118,7 +118,21 @@ export default class ScrabbleServer implements Party.Server {
 			return;
 		}
 
-		// 2. Joining as player 1 (Host) or player 2
+		// 2. Fallback: Reconnecting disconnected player by name match (e.g. mobile background resume)
+		const disconnectedMatch = Object.values(this.state.players).find(
+			(p) => p.name.toLowerCase() === cleanName.toLowerCase() && !p.isConnected
+		);
+		if (disconnectedMatch) {
+			const restoredId = disconnectedMatch.id;
+			this.state.players[restoredId].isConnected = true;
+			conn.setState({ playerId: restoredId });
+			this.connPlayerMap.set(conn.id, restoredId);
+			this.syncSender(conn, restoredId);
+			this.broadcastState();
+			return;
+		}
+
+		// 3. Joining as player 1 (Host) or player 2
 		const currentCount = this.state.playerOrder.length;
 		if (currentCount < 2) {
 			playerId = playerId || `p_${Math.random().toString(36).slice(2, 9)}`;
@@ -134,11 +148,12 @@ export default class ScrabbleServer implements Party.Server {
 			const newPlayer: Player = {
 				id: playerId,
 				name: cleanName,
-				rack: [],
+				rack: this.state.status === 'PLAYING' ? this.drawTiles(RACK_CAPACITY) : [],
 				score: 0,
 				isHost,
 				isConnected: true,
-				consecutivePasses: 0
+				consecutivePasses: 0,
+				invalidAttempts: 0
 			};
 
 			this.state.players[playerId] = newPlayer;
@@ -209,6 +224,7 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.players[pid].rack = this.drawTiles(RACK_CAPACITY);
 			this.state.players[pid].score = 0;
 			this.state.players[pid].consecutivePasses = 0;
+			this.state.players[pid].invalidAttempts = 0;
 		}
 
 		this.state.remainingBagCount = this.state.tileBag.length;
@@ -258,9 +274,51 @@ export default class ScrabbleServer implements Party.Server {
 		);
 
 		if (!result.valid) {
-			this.sendError(conn, result.error || 'Invalid move.');
+			player.invalidAttempts = (player.invalidAttempts || 0) + 1;
+
+			// If 3 consecutive invalid attempts in one turn -> Auto pass!
+			if (player.invalidAttempts >= 3) {
+				player.invalidAttempts = 0;
+				player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+				this.state.consecutivePasses++;
+
+				this.state.moveHistory.unshift({
+					id: `pass_${Date.now()}`,
+					playerId: player.id,
+					playerName: player.name,
+					type: 'PASS',
+					totalScore: 0,
+					timestamp: Date.now()
+				});
+
+				for (const c of this.party.getConnections()) {
+					this.sendNotification(
+						c,
+						`⚠️ ${player.name} reached 3 invalid attempts. Turn automatically passed!`,
+						'warning'
+					);
+				}
+
+				const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+				if (this.state.consecutivePasses >= maxPasses) {
+					this.finishGame(null);
+				} else {
+					this.switchTurn();
+				}
+				this.broadcastState();
+				return;
+			}
+
+			this.sendError(
+				conn,
+				`${result.error || 'Invalid move.'} (Attempt ${player.invalidAttempts}/3 — 3 invalid attempts will pass your turn)`
+			);
+			this.broadcastState();
 			return;
 		}
+
+		// Reset invalid attempts counter on successful move
+		player.invalidAttempts = 0;
 
 		// Apply move to board
 		for (const p of placements) {
@@ -331,6 +389,7 @@ export default class ScrabbleServer implements Party.Server {
 		}
 
 		const player = this.state.players[senderId];
+		player.invalidAttempts = 0;
 		player.consecutivePasses++;
 		this.state.consecutivePasses++;
 
@@ -366,6 +425,8 @@ export default class ScrabbleServer implements Party.Server {
 		}
 
 		const player = this.state.players[senderId];
+		player.invalidAttempts = 0;
+
 		if (!tileIds || tileIds.length === 0 || tileIds.length > player.rack.length) {
 			this.sendError(conn, 'Invalid tile selection for swap.');
 			return;
@@ -427,6 +488,11 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.turnPlayerId = order[nextIndex];
 		this.state.turnStartTime = Date.now();
 		this.state.lastMoveTime = Date.now();
+
+		// Reset invalid attempts counter for all players on turn switch
+		for (const p of Object.values(this.state.players)) {
+			p.invalidAttempts = 0;
+		}
 	}
 
 	drawTiles(count: number): ScrabbleTile[] {

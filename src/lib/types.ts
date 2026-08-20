@@ -47,6 +47,7 @@ export interface Player {
 	isHost: boolean;
 	isConnected: boolean;
 	consecutivePasses: number;
+	invalidAttempts: number; // 3 strikes = auto-pass
 }
 
 export interface MoveHistoryItem {
