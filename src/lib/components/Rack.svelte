@@ -85,7 +85,7 @@
 				newRack[fromIdx] = newRack[index];
 				newRack[index] = temp;
 				onReorderRack(newRack);
-				onSelectTile(tile);
+				onSelectTile(null); // Unselect after swapping
 				return;
 			}
 		}
