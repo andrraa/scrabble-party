@@ -87,7 +87,8 @@ export type ClientMessage =
 	| { type: 'SWAP_TILES'; tileIds: string[]; playerId?: string }
 	| { type: 'RESTART_GAME'; playerId?: string }
 	| { type: 'SET_TIMER'; seconds: number; playerId?: string }
-	| { type: 'SEND_EMOTE'; emote: string; playerId?: string };
+	| { type: 'SEND_EMOTE'; emote: string; playerId?: string }
+	| { type: 'LEAVE_GAME'; playerId?: string };
 
 export type ServerMessage =
 	| { type: 'SYNC_STATE'; state: GameState; yourPlayerId: string }

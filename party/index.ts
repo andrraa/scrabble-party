@@ -58,6 +58,20 @@ export default class ScrabbleServer implements Party.Server {
 			const isStillConnected = [...this.connPlayerMap.values()].some((pid) => pid === playerId);
 			if (!isStillConnected) {
 				this.state.players[playerId].isConnected = false;
+
+				// Notify other player if during playing match
+				if (this.state.status === 'PLAYING') {
+					for (const c of this.party.getConnections()) {
+						if (c.id !== conn.id) {
+							this.sendNotification(
+								c,
+								`⚠️ ${this.state.players[playerId].name} disconnected. Waiting for reconnect...`,
+								'warning'
+							);
+						}
+					}
+				}
+
 				this.broadcastState();
 			}
 		}
@@ -97,6 +111,9 @@ export default class ScrabbleServer implements Party.Server {
 			case 'SEND_EMOTE':
 				this.handleSendEmote(msg.emote, senderId, conn);
 				break;
+			case 'LEAVE_GAME':
+				this.handleLeaveGame(senderId, conn);
+				break;
 			case 'RESTART_GAME':
 				this.handleRestartGame(senderId, conn);
 				break;
@@ -113,6 +130,16 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.players[playerId].isConnected = true;
 			conn.setState({ playerId });
 			this.connPlayerMap.set(conn.id, playerId);
+
+			// If match in progress, inform opponent of reconnect
+			if (this.state.status === 'PLAYING') {
+				for (const c of this.party.getConnections()) {
+					if (c.id !== conn.id) {
+						this.sendNotification(c, `✅ ${cleanName} reconnected to the match!`, 'success');
+					}
+				}
+			}
+
 			this.syncSender(conn, playerId);
 			this.broadcastState();
 			return;
@@ -127,6 +154,15 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.players[restoredId].isConnected = true;
 			conn.setState({ playerId: restoredId });
 			this.connPlayerMap.set(conn.id, restoredId);
+
+			if (this.state.status === 'PLAYING') {
+				for (const c of this.party.getConnections()) {
+					if (c.id !== conn.id) {
+						this.sendNotification(c, `✅ ${cleanName} reconnected to the match!`, 'success');
+					}
+				}
+			}
+
 			this.syncSender(conn, restoredId);
 			this.broadcastState();
 			return;
@@ -161,6 +197,13 @@ export default class ScrabbleServer implements Party.Server {
 			conn.setState({ playerId });
 			this.connPlayerMap.set(conn.id, playerId);
 
+			// Inform other player in lobby
+			for (const c of this.party.getConnections()) {
+				if (c.id !== conn.id) {
+					this.sendNotification(c, `👋 ${cleanName} joined the room!`, 'info');
+				}
+			}
+
 			this.syncSender(conn, playerId);
 			this.broadcastState();
 		} else {
@@ -171,6 +214,60 @@ export default class ScrabbleServer implements Party.Server {
 			this.syncSender(conn, spectatorId);
 			this.sendNotification(conn, 'Joined as Spectator (Game is 2-player max)', 'info');
 		}
+	}
+
+	handleLeaveGame(senderId: string, conn: Party.Connection) {
+		const leavingPlayer = this.state.players[senderId];
+		if (!leavingPlayer) return;
+
+		this.connPlayerMap.delete(conn.id);
+
+		if (this.state.status === 'PLAYING') {
+			// Find opponent
+			const otherPlayerId = this.state.playerOrder.find((pid) => pid !== senderId);
+
+			this.state.status = 'FINISHED';
+			this.state.winnerId = otherPlayerId || null;
+
+			// Log forfeit
+			this.state.moveHistory.unshift({
+				id: `leave_${Date.now()}`,
+				playerId: leavingPlayer.id,
+				playerName: leavingPlayer.name,
+				type: 'PASS',
+				totalScore: 0,
+				timestamp: Date.now()
+			});
+
+			for (const c of this.party.getConnections()) {
+				if (c.id !== conn.id) {
+					this.sendNotification(
+						c,
+						`🚪 ${leavingPlayer.name} has left the match. You won by forfeit!`,
+						'success'
+					);
+				}
+			}
+		} else if (this.state.status === 'LOBBY') {
+			delete this.state.players[senderId];
+			this.state.playerOrder = this.state.playerOrder.filter((pid) => pid !== senderId);
+
+			// If Host left and another player is in lobby, promote to Host
+			if (leavingPlayer.isHost && this.state.playerOrder.length > 0) {
+				const newHostId = this.state.playerOrder[0];
+				if (this.state.players[newHostId]) {
+					this.state.players[newHostId].isHost = true;
+				}
+			}
+
+			for (const c of this.party.getConnections()) {
+				if (c.id !== conn.id) {
+					this.sendNotification(c, `🚪 ${leavingPlayer.name} has left the lobby.`, 'info');
+				}
+			}
+		}
+
+		this.broadcastState();
 	}
 
 	handleSetTimer(seconds: number, senderId: string, conn: Party.Connection) {

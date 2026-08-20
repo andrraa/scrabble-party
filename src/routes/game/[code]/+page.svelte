@@ -401,6 +401,9 @@
 	}
 
 	function handleConfirmLeave() {
+		if (socket) {
+			sendSocketMessage(socket, { type: 'LEAVE_GAME', playerId: currentUserId });
+		}
 		if (typeof window !== 'undefined') {
 			sessionStorage.removeItem(`scrabble_pid_${roomCode}`);
 		}
