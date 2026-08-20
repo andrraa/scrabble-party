@@ -209,7 +209,8 @@
 		if (!socket || !isHost) return;
 		sendSocketMessage(socket, {
 			type: 'SET_TIMER',
-			seconds
+			seconds,
+			playerId: currentUserId
 		});
 	}
 
@@ -217,7 +218,8 @@
 		if (!socket) return;
 		sendSocketMessage(socket, {
 			type: 'SEND_EMOTE',
-			emote
+			emote,
+			playerId: currentUserId
 		});
 	}
 
@@ -318,7 +320,8 @@
 		if (!socket || !isMyTurn || pendingPlacements.length === 0) return;
 		sendSocketMessage(socket, {
 			type: 'PLAY_MOVE',
-			placements: pendingPlacements
+			placements: pendingPlacements,
+			playerId: currentUserId
 		});
 	}
 
@@ -326,7 +329,7 @@
 		if (!socket || !isMyTurn) return;
 		if (confirm('Are you sure you want to pass your turn?')) {
 			handleRecallAll();
-			sendSocketMessage(socket, { type: 'PASS_TURN' });
+			sendSocketMessage(socket, { type: 'PASS_TURN', playerId: currentUserId });
 		}
 	}
 
@@ -336,19 +339,20 @@
 		playShuffleSound();
 		sendSocketMessage(socket, {
 			type: 'SWAP_TILES',
-			tileIds
+			tileIds,
+			playerId: currentUserId
 		});
 		showSwapDialog = false;
 	}
 
 	function handleStartGame() {
 		if (!socket || !canStartGame) return;
-		sendSocketMessage(socket, { type: 'START_GAME' });
+		sendSocketMessage(socket, { type: 'START_GAME', playerId: currentUserId });
 	}
 
 	function handleRestartGame() {
 		if (!socket || !isHost) return;
-		sendSocketMessage(socket, { type: 'RESTART_GAME' });
+		sendSocketMessage(socket, { type: 'RESTART_GAME', playerId: currentUserId });
 	}
 
 	function handleCopyLink() {

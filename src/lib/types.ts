@@ -80,13 +80,13 @@ export interface GameState {
 // WebSocket Message Types
 export type ClientMessage =
 	| { type: 'JOIN'; name: string; playerId?: string }
-	| { type: 'START_GAME' }
-	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[] }
-	| { type: 'PASS_TURN' }
-	| { type: 'SWAP_TILES'; tileIds: string[] }
-	| { type: 'RESTART_GAME' }
-	| { type: 'SET_TIMER'; seconds: number }
-	| { type: 'SEND_EMOTE'; emote: string };
+	| { type: 'START_GAME'; playerId?: string }
+	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[]; playerId?: string }
+	| { type: 'PASS_TURN'; playerId?: string }
+	| { type: 'SWAP_TILES'; tileIds: string[]; playerId?: string }
+	| { type: 'RESTART_GAME'; playerId?: string }
+	| { type: 'SET_TIMER'; seconds: number; playerId?: string }
+	| { type: 'SEND_EMOTE'; emote: string; playerId?: string };
 
 export type ServerMessage =
 	| { type: 'SYNC_STATE'; state: GameState; yourPlayerId: string }

@@ -19,7 +19,7 @@ export default class ScrabbleServer implements Party.Server {
 	party: Party.Party;
 	state: GameState;
 	dictionary: Set<string>;
-	timerInterval: any = null;
+	connPlayerMap: Map<string, string> = new Map();
 
 	constructor(party: Party.Party) {
 		this.party = party;
@@ -41,7 +41,7 @@ export default class ScrabbleServer implements Party.Server {
 			moveHistory: [],
 			winnerId: null,
 			lastMoveTime: Date.now(),
-			timerDuration: 90, // default 90s (1.5 min), or 0 for off
+			timerDuration: 90, // default 90s, or 0 for off
 			turnStartTime: Date.now()
 		};
 	}
@@ -51,11 +51,12 @@ export default class ScrabbleServer implements Party.Server {
 	}
 
 	onClose(conn: Party.Connection) {
-		const playerId = conn.state?.playerId as string | undefined;
+		const playerId = (conn.state?.playerId as string) || this.connPlayerMap.get(conn.id);
 		if (playerId && this.state.players[playerId]) {
 			this.state.players[playerId].isConnected = false;
 			this.broadcastState();
 		}
+		this.connPlayerMap.delete(conn.id);
 	}
 
 	onMessage(message: string, sender: Party.Connection) {
@@ -68,30 +69,32 @@ export default class ScrabbleServer implements Party.Server {
 	}
 
 	handleClientMessage(msg: ClientMessage, conn: Party.Connection) {
+		const senderId = (conn.state?.playerId as string) || this.connPlayerMap.get(conn.id) || msg.playerId || '';
+
 		switch (msg.type) {
 			case 'JOIN':
 				this.handleJoin(msg.name, msg.playerId, conn);
 				break;
 			case 'SET_TIMER':
-				this.handleSetTimer(msg.seconds, conn);
+				this.handleSetTimer(msg.seconds, senderId, conn);
 				break;
 			case 'START_GAME':
-				this.handleStartGame(conn);
+				this.handleStartGame(senderId, conn);
 				break;
 			case 'PLAY_MOVE':
-				this.handlePlayMove(msg.placements, conn);
+				this.handlePlayMove(msg.placements, senderId, conn);
 				break;
 			case 'PASS_TURN':
-				this.handlePassTurn(conn);
+				this.handlePassTurn(senderId, conn);
 				break;
 			case 'SWAP_TILES':
-				this.handleSwapTiles(msg.tileIds, conn);
+				this.handleSwapTiles(msg.tileIds, senderId, conn);
 				break;
 			case 'SEND_EMOTE':
-				this.handleSendEmote(msg.emote, conn);
+				this.handleSendEmote(msg.emote, senderId, conn);
 				break;
 			case 'RESTART_GAME':
-				this.handleRestartGame(conn);
+				this.handleRestartGame(senderId, conn);
 				break;
 		}
 	}
@@ -105,6 +108,7 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.players[playerId].name = cleanName || this.state.players[playerId].name;
 			this.state.players[playerId].isConnected = true;
 			conn.setState({ playerId });
+			this.connPlayerMap.set(conn.id, playerId);
 			this.syncSender(conn, playerId);
 			this.broadcastState();
 			return;
@@ -129,6 +133,7 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.players[playerId] = newPlayer;
 			this.state.playerOrder.push(playerId);
 			conn.setState({ playerId });
+			this.connPlayerMap.set(conn.id, playerId);
 
 			this.syncSender(conn, playerId);
 			this.broadcastState();
@@ -136,22 +141,22 @@ export default class ScrabbleServer implements Party.Server {
 			// Spectator mode
 			const spectatorId = playerId || `spec_${Math.random().toString(36).slice(2, 9)}`;
 			conn.setState({ playerId: spectatorId });
+			this.connPlayerMap.set(conn.id, spectatorId);
 			this.syncSender(conn, spectatorId);
 			this.sendNotification(conn, 'Joined as Spectator (Game is 2-player max)', 'info');
 		}
 	}
 
-	handleSetTimer(seconds: number, conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
-		if (!this.state.players[senderId]?.isHost || this.state.status !== 'LOBBY') {
+	handleSetTimer(seconds: number, senderId: string, conn: Party.Connection) {
+		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
+		if (!isHost || this.state.status !== 'LOBBY') {
 			return;
 		}
 		this.state.timerDuration = Math.max(0, Math.min(300, seconds));
 		this.broadcastState();
 	}
 
-	handleSendEmote(emote: string, conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
+	handleSendEmote(emote: string, senderId: string, conn: Party.Connection) {
 		const player = this.state.players[senderId];
 		if (!player) return;
 
@@ -167,9 +172,9 @@ export default class ScrabbleServer implements Party.Server {
 		}
 	}
 
-	handleStartGame(conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
-		if (!senderId || !this.state.players[senderId]?.isHost) {
+	handleStartGame(senderId: string, conn: Party.Connection) {
+		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
+		if (!isHost) {
 			this.sendError(conn, 'Only the host can start the game.');
 			return;
 		}
@@ -203,8 +208,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handlePlayMove(placements: PlacedTileMove[], conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
+	handlePlayMove(placements: PlacedTileMove[], senderId: string, conn: Party.Connection) {
 		if (this.state.status !== 'PLAYING') {
 			this.sendError(conn, 'Game is not currently active.');
 			return;
@@ -309,8 +313,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handlePassTurn(conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
+	handlePassTurn(senderId: string, conn: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
 			this.sendError(conn, 'Cannot pass right now.');
 			return;
@@ -340,8 +343,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handleSwapTiles(tileIds: string[], conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
+	handleSwapTiles(tileIds: string[], senderId: string, conn: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
 			this.sendError(conn, 'Cannot swap tiles right now.');
 			return;
@@ -397,13 +399,13 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handleRestartGame(conn: Party.Connection) {
-		const senderId = conn.state?.playerId as string;
-		if (!this.state.players[senderId]?.isHost) {
+	handleRestartGame(senderId: string, conn: Party.Connection) {
+		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
+		if (!isHost) {
 			this.sendError(conn, 'Only the host can restart the game.');
 			return;
 		}
-		this.handleStartGame(conn);
+		this.handleStartGame(senderId, conn);
 	}
 
 	switchTurn() {
@@ -467,7 +469,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.remainingBagCount = this.state.tileBag.length;
 
 		for (const conn of this.party.getConnections()) {
-			const playerId = (conn.state?.playerId as string) || '';
+			const playerId = (conn.state?.playerId as string) || this.connPlayerMap.get(conn.id) || '';
 			this.syncSender(conn, playerId);
 		}
 	}
