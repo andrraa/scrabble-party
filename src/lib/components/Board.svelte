@@ -33,7 +33,7 @@
 	}
 </script>
 
-<div class="flex items-center justify-center select-none w-full max-w-[min(100%,500px,calc(100vh-270px))] aspect-square mx-auto">
+<div class="flex items-center justify-center select-none w-auto h-full max-h-full max-w-full aspect-square mx-auto">
 	<!-- The 15x15 Grid Container -->
 	<div class="scrabble-board-grid w-full h-full border border-[#8d7b68] sm:border-2 rounded-xl overflow-hidden shadow-xs bg-[#c7baa7] gap-[1px] p-[1.5px]">
 		{#each board as rowCells, r}

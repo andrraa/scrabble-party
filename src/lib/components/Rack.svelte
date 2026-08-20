@@ -96,7 +96,7 @@
 	}
 </script>
 
-<div class="flex flex-col items-center gap-1.5 sm:gap-2 w-full max-w-[min(100%,500px,calc(100vh-270px))] mx-auto mt-1 sm:mt-1.5">
+<div class="flex flex-col items-center gap-1.5 sm:gap-2 w-full max-w-[500px] mx-auto">
 	<!-- Fixed 7-Slot Tile Rack Stand with Drag-to-Reorder / Click-to-Swap -->
 	<div class="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#4a3525] rounded-xl shadow-inner border border-[#3b2a1d] w-full items-center justify-items-center min-h-[48px] sm:min-h-[56px] md:min-h-[64px]">
 		{#each Array(7) as _, index}

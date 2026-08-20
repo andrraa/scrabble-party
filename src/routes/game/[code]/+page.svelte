@@ -626,9 +626,9 @@
 				</div>
 
 				<!-- Board & Rack Column (Card styling on desktop, full adaptive on mobile) -->
-				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full max-w-[min(100%,540px)] lg:max-w-none h-auto lg:h-full min-h-0 bg-white border border-slate-200/90 rounded-2xl p-2 sm:p-3 md:p-4 lg:p-4 shadow-2xs gap-3 sm:gap-4">
-					<!-- Scrabble 15x15 Board -->
-					<div class="w-full flex-1 flex items-center justify-center min-h-0 pb-1 sm:pb-2">
+				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full max-w-[min(100%,540px)] lg:max-w-none h-auto lg:h-full min-h-0 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 md:p-4 shadow-2xs gap-2 sm:gap-3 overflow-hidden">
+					<!-- Scrabble 15x15 Board Wrapper -->
+					<div class="w-full flex-1 flex items-center justify-center min-h-0 min-w-0 overflow-hidden">
 						<Board
 							board={gameState.board}
 							{pendingPlacements}
@@ -638,7 +638,7 @@
 					</div>
 
 					<!-- Rack & Action Controls -->
-					<div class="w-full shrink-0 pt-1.5 sm:pt-2">
+					<div class="w-full shrink-0 pt-1 sm:pt-1.5">
 						<Rack
 							rack={availableRack}
 							selectedTileId={selectedRackTile?.id}
