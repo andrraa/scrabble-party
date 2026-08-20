@@ -122,7 +122,7 @@
 				gameState = msg.state;
 				currentUserId = msg.yourPlayerId;
 				if (typeof window !== 'undefined') {
-					localStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
+					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
 				}
 				// If turn changed, reset pending placements
 				if (msg.state.turnPlayerId !== currentUserId) {
@@ -158,12 +158,13 @@
 
 	onMount(() => {
 		let savedPid = '';
-		let playerName = initialName;
+		let playerName = page.url.searchParams.get('name') || '';
 
 		if (typeof window !== 'undefined') {
-			savedPid = localStorage.getItem(`scrabble_pid_${roomCode}`) || '';
-			const storedName = localStorage.getItem('scrabble_player_name');
-			if (storedName) playerName = storedName;
+			savedPid = sessionStorage.getItem(`scrabble_pid_${roomCode}`) || '';
+			if (!playerName) {
+				playerName = localStorage.getItem('scrabble_player_name') || 'Player';
+			}
 			const savedMute = localStorage.getItem('scrabble_mute');
 			if (savedMute === 'true') {
 				isAudioMuted = true;
@@ -365,7 +366,7 @@
 
 	function handleConfirmLeave() {
 		if (typeof window !== 'undefined') {
-			localStorage.removeItem(`scrabble_pid_${roomCode}`);
+			sessionStorage.removeItem(`scrabble_pid_${roomCode}`);
 		}
 		if (socket) {
 			socket.close();
