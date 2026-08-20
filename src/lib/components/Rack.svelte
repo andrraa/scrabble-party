@@ -16,7 +16,6 @@
 		onOpenSwap,
 		onPass,
 		onPlay,
-		onSendEmote,
 		onReorderRack
 	}: {
 		rack: ScrabbleTile[];
@@ -31,11 +30,9 @@
 		onOpenSwap: () => void;
 		onPass: () => void;
 		onPlay: () => void;
-		onSendEmote?: (emote: string) => void;
 		onReorderRack?: (newRack: ScrabbleTile[]) => void;
 	} = $props();
 
-	const EMOTES = ['👏 Nice!', '🤔 Thinking', '🔥 Wow', '👍 GG', '🎯 Boom!'];
 	let draggedRackIdx = $state<number | null>(null);
 
 	function handleDragStart(e: DragEvent, tile: ScrabbleTile, index: number) {
@@ -203,19 +200,4 @@
 			</Button>
 		</div>
 	</div>
-
-	<!-- Quick Emotes Bar -->
-	{#if onSendEmote}
-		<div class="flex items-center justify-center gap-1.5 pt-0.5 w-full overflow-x-auto">
-			{#each EMOTES as emote}
-				<button
-					type="button"
-					onclick={() => onSendEmote(emote)}
-					class="px-2 py-0.5 rounded-full bg-slate-100/80 hover:bg-slate-200 text-[10px] sm:text-[11px] font-medium text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
-				>
-					{emote}
-				</button>
-			{/each}
-		</div>
-	{/if}
 </div>

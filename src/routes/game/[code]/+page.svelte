@@ -51,6 +51,7 @@
 
 	// Active Emotes mapping per player
 	let activeEmotes = $state<Record<string, string>>({});
+	let showEmotePicker = $state(false);
 
 	// Modals & Drawers
 	let showBlankDialog = $state(false);
@@ -255,9 +256,15 @@
 	}
 
 	function handleGlobalClick(e: MouseEvent) {
-		if (!selectedRackTile) return;
 		const target = e.target as HTMLElement | null;
 		if (!target) return;
+
+		// Close emote picker if clicked outside
+		if (showEmotePicker && !target.closest('.relative')) {
+			showEmotePicker = false;
+		}
+
+		if (!selectedRackTile) return;
 
 		// Check if click was inside the rack stand, board grid, buttons, or modals
 		const isBoard = target.closest('.scrabble-board-grid');
@@ -433,7 +440,7 @@
 				</a>
 			</div>
 
-			<div class="flex items-center gap-2 sm:gap-2.5">
+			<div class="flex items-center gap-1.5 sm:gap-2.5">
 				<!-- Online Status Badge -->
 				{#if isConnected}
 					<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-[11px] md:text-xs font-medium text-emerald-700 border border-emerald-200">
@@ -455,6 +462,40 @@
 				>
 					{isAudioMuted ? '🔇' : '🔊'}
 				</button>
+
+				<!-- Quick Emotes Popover Trigger -->
+				{#if gameState.status === 'PLAYING'}
+					<div class="relative">
+						<button
+							type="button"
+							onclick={() => (showEmotePicker = !showEmotePicker)}
+							class="px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-1 cursor-pointer"
+							title="Send Quick Reaction"
+						>
+							<span>💬</span>
+							<span class="hidden sm:inline">React</span>
+						</button>
+
+						{#if showEmotePicker}
+							<div
+								class="absolute top-full right-0 mt-1.5 z-40 p-1.5 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-xl flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100"
+							>
+								{#each ['👏 Nice!', '🤔 Thinking', '🔥 Wow', '👍 GG', '🎯 Boom!'] as emote}
+									<button
+										type="button"
+										onclick={() => {
+											handleSendEmote(emote);
+											showEmotePicker = false;
+										}}
+										class="px-2 py-1 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-800 transition-colors whitespace-nowrap cursor-pointer"
+									>
+										{emote}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Tile Bag Distribution Reference Button -->
 				{#if gameState.status === 'PLAYING'}
@@ -625,8 +666,8 @@
 					/>
 				</div>
 
-				<!-- Board & Rack Column (Card styling on desktop, full adaptive on mobile) -->
-				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full max-w-[min(100%,540px)] lg:max-w-none h-auto lg:h-full min-h-0 bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 md:p-4 shadow-2xs gap-2 sm:gap-3 overflow-hidden">
+				<!-- Board & Rack Column (Transparent on Mobile for Maximum Board Size, Card on Desktop) -->
+				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full max-w-[min(100%,540px)] lg:max-w-none h-auto lg:h-full min-h-0 bg-transparent lg:bg-white border-0 lg:border lg:border-slate-200/90 rounded-none lg:rounded-2xl p-0 lg:p-4 shadow-none lg:shadow-2xs gap-2 sm:gap-3 overflow-hidden">
 					<!-- Scrabble 15x15 Board Wrapper -->
 					<div class="w-full flex-1 flex items-center justify-center min-h-0 min-w-0 overflow-hidden">
 						<Board
@@ -652,7 +693,6 @@
 							onOpenSwap={() => (showSwapDialog = true)}
 							onPass={handlePassTurn}
 							onPlay={handlePlayWord}
-							onSendEmote={handleSendEmote}
 							onReorderRack={(newRack) => {
 								if (currentPlayer) currentPlayer.rack = newRack;
 							}}
