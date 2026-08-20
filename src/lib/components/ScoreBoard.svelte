@@ -14,6 +14,7 @@
 		turnStartTime = 0,
 		activeEmotes = {},
 		onCopyCode,
+		onSendEmote,
 		class: className = ''
 	}: {
 		gameCode: string;
@@ -27,11 +28,14 @@
 		turnStartTime?: number;
 		activeEmotes?: Record<string, string>;
 		onCopyCode: () => void;
+		onSendEmote?: (emote: string) => void;
 		class?: string;
 	} = $props();
 
 	const p1 = $derived(playerOrder[0] ? players[playerOrder[0]] : null);
 	const p2 = $derived(playerOrder[1] ? players[playerOrder[1]] : null);
+
+	let showEmotePicker = $state(false);
 
 	// Live timer countdown calculation
 	let now = $state(Date.now());
@@ -50,10 +54,10 @@
 	});
 </script>
 
-<div class="flex flex-col gap-2.5 w-full bg-white border border-slate-200/90 rounded-xl md:rounded-2xl p-2.5 sm:p-3 md:p-3.5 shadow-2xs {className}">
+<div class="flex flex-col gap-2 w-full bg-white border border-slate-200/90 rounded-xl md:rounded-2xl p-2.5 sm:p-3 shadow-2xs {className}">
 	<!-- Top Bar Header: Structured 2-row layout for 100% responsiveness -->
-	<div class="flex flex-col gap-1.5 pb-2 border-b border-slate-100 text-xs">
-		<!-- Sub-row 1: Room Code + Game Status -->
+	<div class="flex flex-col gap-1.5 pb-1.5 border-b border-slate-100 text-xs">
+		<!-- Sub-row 1: Room Code + Emote + Game Status -->
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex items-center gap-1.5 min-w-0">
 				<span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">ROOM</span>
@@ -67,7 +71,47 @@
 				</button>
 			</div>
 
-			<div class="shrink-0">
+			<!-- Right side: Reaction Popover (left of Playing badge) + Status Badge -->
+			<div class="flex items-center gap-1.5 shrink-0">
+				{#if onSendEmote && status === 'PLAYING'}
+					<div class="relative">
+						<button
+							type="button"
+							onclick={() => (showEmotePicker = !showEmotePicker)}
+							class="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-0.5 cursor-pointer shadow-2xs"
+							title="Send Quick Reaction"
+						>
+							<span>💬</span>
+							<span class="text-[10px] font-sans">React</span>
+						</button>
+
+						{#if showEmotePicker}
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="fixed inset-0 z-40 bg-transparent"
+								onclick={() => (showEmotePicker = false)}
+							></div>
+							<div
+								class="absolute top-full right-0 mt-1 z-50 p-1.5 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100"
+							>
+								{#each ['👏 Nice!', '🤔 Thinking', '🔥 Wow', '👍 GG', '🎯 Boom!'] as emote}
+									<button
+										type="button"
+										onclick={() => {
+											if (onSendEmote) onSendEmote(emote);
+											showEmotePicker = false;
+										}}
+										class="px-2 py-1 rounded-lg hover:bg-slate-100 text-xs font-medium text-slate-800 transition-colors whitespace-nowrap cursor-pointer"
+									>
+										{emote}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+
 				{#if status === 'LOBBY'}
 					<Badge variant="warning" class="text-[10px] py-0.5 px-2 font-bold">LOBBY</Badge>
 				{:else if status === 'PLAYING'}
