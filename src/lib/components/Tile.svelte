@@ -36,7 +36,7 @@
 			clsx(
 				'relative select-none flex items-center justify-center font-bold tracking-tight rounded-md transition-all duration-100 touch-manipulation',
 				// Size styles
-				size === 'board' && 'w-full h-full text-[clamp(11px,2.6vw,19px)] leading-none font-bold',
+				size === 'board' && 'w-full h-full text-[clamp(11.5px,3.6vw,19px)] leading-none font-bold',
 				size === 'normal' && 'w-full max-w-[46px] sm:max-w-[54px] md:max-w-[62px] aspect-[4/5] text-[clamp(14px,2.5vw,22px)] shadow-xs cursor-pointer',
 				size === 'small' && 'w-6 h-7 md:w-7 md:h-8 text-xs shadow-2xs',
 				// State appearances
@@ -63,7 +63,7 @@
 		<span
 			class={clsx(
 				'absolute leading-none font-medium opacity-80 select-none',
-				size === 'board' && 'bottom-[1px] right-[1px] text-[clamp(6px,1.2vw,9px)]',
+				size === 'board' && 'bottom-[0.5px] sm:bottom-[1px] right-[0.5px] sm:right-[1px] text-[clamp(6px,1.6vw,9px)]',
 				size === 'normal' && 'bottom-0.5 sm:bottom-1 right-0.5 sm:right-1 text-[8px] sm:text-[10px] md:text-xs',
 				size === 'small' && 'bottom-0.5 right-0.5 text-[7px]'
 			)}

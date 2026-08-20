@@ -632,9 +632,9 @@
 				</div>
 
 				<!-- Board & Rack Column (Transparent full width on Mobile, Card on Desktop) -->
-				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full h-auto lg:h-full min-h-0 bg-transparent lg:bg-white border-0 lg:border lg:border-slate-200/90 rounded-none lg:rounded-2xl p-0 lg:p-4 shadow-none lg:shadow-2xs gap-1.5 sm:gap-2.5 overflow-hidden">
+				<div class="lg:col-span-8 flex flex-col items-center justify-between w-full h-auto lg:h-full min-h-0 bg-transparent lg:bg-white border-0 lg:border lg:border-slate-200/90 rounded-none lg:rounded-2xl p-0 lg:p-4 shadow-none lg:shadow-2xs gap-1.5 sm:gap-2.5">
 					<!-- Scrabble 15x15 Board Wrapper -->
-					<div class="w-full flex-1 flex items-center justify-center min-h-0 min-w-0 overflow-hidden">
+					<div class="w-full flex items-center justify-center lg:flex-1 lg:min-h-0 lg:min-w-0">
 						<Board
 							board={gameState.board}
 							{pendingPlacements}

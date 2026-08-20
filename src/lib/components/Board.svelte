@@ -33,9 +33,9 @@
 	}
 </script>
 
-<div class="flex items-center justify-center select-none w-auto h-full max-h-full max-w-full aspect-square mx-auto">
+<div class="flex items-center justify-center select-none w-full max-w-full lg:w-auto lg:h-full lg:max-h-full lg:max-w-full aspect-square mx-auto">
 	<!-- The 15x15 Grid Container -->
-	<div class="scrabble-board-grid w-full h-full border border-[#8d7b68] sm:border-2 rounded-xl overflow-hidden shadow-xs bg-[#c7baa7] gap-[1px] p-[1.5px]">
+	<div class="scrabble-board-grid w-full h-full border border-[#8d7b68] sm:border-2 rounded-lg sm:rounded-xl overflow-hidden shadow-xs bg-[#c7baa7] gap-[1px] p-[1px]">
 		{#each board as rowCells, r}
 			{#each rowCells as cell, c}
 				<Cell

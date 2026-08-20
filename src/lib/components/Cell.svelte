@@ -81,7 +81,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class={clsx(
-		'relative border flex items-center justify-center aspect-square transition-all duration-75 p-[1px] select-none touch-manipulation',
+		'relative border flex items-center justify-center aspect-square transition-all duration-75 p-[0.5px] select-none touch-manipulation',
 		cellColorClass,
 		isTarget && 'ring-2 ring-blue-500 ring-inset bg-blue-100',
 		!tileToRender && 'active:bg-slate-200 cursor-pointer'
@@ -98,7 +98,7 @@
 			{isLocked}
 		/>
 	{:else}
-		<span class="text-[clamp(7px,1.8vw,11px)] font-bold tracking-tighter leading-none select-none">
+		<span class="text-[clamp(7.5px,2.2vw,11px)] font-bold tracking-tighter leading-none select-none">
 			{multiplierLabel}
 		</span>
 	{/if}
