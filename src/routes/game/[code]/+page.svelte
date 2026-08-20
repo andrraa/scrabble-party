@@ -29,12 +29,12 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 
 	const roomCode = $derived((page.params.code || '').toUpperCase());
-	const initialName = $derived(page.url.searchParams.get('name') || 'Player');
 
 	let socket = $state<PartySocket | null>(null);
 	let currentUserId = $state<string>('');
 	let isConnected = $state(false);
 	let isAudioMuted = $state(false);
+	let storedPlayerName = $state('Player');
 
 	// Translucent floating toast state
 	interface Toast {
@@ -121,7 +121,7 @@
 			case 'SYNC_STATE':
 				gameState = msg.state;
 				currentUserId = msg.yourPlayerId;
-				if (typeof window !== 'undefined') {
+				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
 				}
 				// If turn changed, reset pending placements
@@ -156,15 +156,19 @@
 		}
 	}
 
+	let visibilityListener: any = null;
+
 	onMount(() => {
-		let savedPid = '';
 		let playerName = page.url.searchParams.get('name') || '';
 
 		if (typeof window !== 'undefined') {
-			savedPid = sessionStorage.getItem(`scrabble_pid_${roomCode}`) || '';
 			if (!playerName) {
-				playerName = localStorage.getItem('scrabble_player_name') || 'Player';
+				playerName = sessionStorage.getItem('scrabble_player_name') || localStorage.getItem('scrabble_player_name') || 'Player';
+			} else {
+				sessionStorage.setItem('scrabble_player_name', playerName);
 			}
+			storedPlayerName = playerName;
+
 			const savedMute = localStorage.getItem('scrabble_mute');
 			if (savedMute === 'true') {
 				isAudioMuted = true;
@@ -178,10 +182,11 @@
 			() => {
 				isConnected = true;
 				if (socket) {
+					const activePid = currentUserId || (typeof window !== 'undefined' ? sessionStorage.getItem(`scrabble_pid_${roomCode}`) : '') || undefined;
 					sendSocketMessage(socket, {
 						type: 'JOIN',
-						name: playerName,
-						playerId: savedPid || undefined
+						name: storedPlayerName,
+						playerId: activePid
 					});
 				}
 			},
@@ -189,6 +194,19 @@
 				isConnected = false;
 			}
 		);
+
+		// Mobile background/resume listener
+		visibilityListener = () => {
+			if (document.visibilityState === 'visible' && socket) {
+				const activePid = currentUserId || sessionStorage.getItem(`scrabble_pid_${roomCode}`) || undefined;
+				sendSocketMessage(socket, {
+					type: 'JOIN',
+					name: storedPlayerName,
+					playerId: activePid
+				});
+			}
+		};
+		document.addEventListener('visibilitychange', visibilityListener);
 	});
 
 	onDestroy(() => {
@@ -196,6 +214,9 @@
 			socket.close();
 		}
 		if (toastTimeout) clearTimeout(toastTimeout);
+		if (visibilityListener && typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', visibilityListener);
+		}
 	});
 
 	function toggleMute() {
