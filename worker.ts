@@ -30,9 +30,11 @@ export class ScrabbleDurableObject implements DurableObject {
 			broadcast: (msg: string, without?: string[]) => {
 				for (const [ws, data] of this.connections.entries()) {
 					if (!without || !without.includes(data.id)) {
-						if (ws.readyState === WebSocket.OPEN) {
-							ws.send(msg);
-						}
+						try {
+							if (ws.readyState === WebSocket.OPEN) {
+								ws.send(msg);
+							}
+						} catch (e) {}
 					}
 				}
 			},
@@ -46,16 +48,27 @@ export class ScrabbleDurableObject implements DurableObject {
 		return {
 			id: data.id,
 			socket: ws as any,
-			state: data.state,
+			get state() {
+				return data.state;
+			},
+			set state(s: any) {
+				data.state = s;
+			},
 			setState: (newState: any) => {
 				data.state = typeof newState === 'function' ? newState(data.state) : { ...data.state, ...newState };
 			},
 			send: (msg: string) => {
-				if (ws.readyState === WebSocket.OPEN) {
-					ws.send(msg);
-				}
+				try {
+					if (ws.readyState === WebSocket.OPEN) {
+						ws.send(msg);
+					}
+				} catch (e) {}
 			},
-			close: () => ws.close(),
+			close: () => {
+				try {
+					ws.close();
+				} catch (e) {}
+			},
 			deserializeAttachment: () => null,
 			serializeAttachment: () => {}
 		};
@@ -96,7 +109,7 @@ export class ScrabbleDurableObject implements DurableObject {
 			this.server.onClose?.(conn);
 		});
 
-		serverWs.addEventListener('error', (err) => {
+		serverWs.addEventListener('error', () => {
 			this.connections.delete(serverWs);
 		});
 
