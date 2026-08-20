@@ -245,9 +245,8 @@
 		});
 	}
 
-	// Mobile & Desktop Tap-to-Place Tile Interaction
+	// Mobile & Desktop Tap-to-Place Tile Interaction (Allowed at any time for rearranging)
 	function handleSelectRackTile(tile: ScrabbleTile | null) {
-		if (!isMyTurn) return;
 		if (!tile || selectedRackTile?.id === tile.id) {
 			selectedRackTile = null;
 		} else {
