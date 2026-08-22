@@ -119,6 +119,16 @@
 	function handleServerMessage(msg: ServerMessage) {
 		switch (msg.type) {
 			case 'SYNC_STATE':
+				const myIncoming = msg.state.players[msg.yourPlayerId];
+				if (myIncoming && currentPlayer && currentPlayer.rack.length > 0) {
+					// Preserve local custom rack arrangement order across server syncs
+					const incomingIds = new Set(myIncoming.rack.map((t) => t.id));
+					const preserved = currentPlayer.rack.filter((t) => incomingIds.has(t.id));
+					const preservedIds = new Set(preserved.map((t) => t.id));
+					const newlyDrawn = myIncoming.rack.filter((t) => !preservedIds.has(t.id));
+					myIncoming.rack = [...preserved, ...newlyDrawn];
+				}
+
 				gameState = msg.state;
 				currentUserId = msg.yourPlayerId;
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
@@ -232,6 +242,15 @@
 		sendSocketMessage(socket, {
 			type: 'SET_TIMER',
 			seconds,
+			playerId: currentUserId
+		});
+	}
+
+	function handleTimerExpired() {
+		if (!socket || gameState.status !== 'PLAYING') return;
+		handleRecallAll();
+		sendSocketMessage(socket, {
+			type: 'TIMER_EXPIRED',
 			playerId: currentUserId
 		});
 	}
@@ -631,6 +650,7 @@
 						{activeEmotes}
 						onCopyCode={handleCopyLink}
 						onSendEmote={handleSendEmote}
+						onTimerExpired={handleTimerExpired}
 					/>
 				</div>
 
@@ -683,6 +703,7 @@
 						{activeEmotes}
 						onCopyCode={handleCopyLink}
 						onSendEmote={handleSendEmote}
+						onTimerExpired={handleTimerExpired}
 					/>
 
 					<div class="flex-1 min-h-0 overflow-hidden">

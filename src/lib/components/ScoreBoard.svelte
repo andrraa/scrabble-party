@@ -15,6 +15,7 @@
 		activeEmotes = {},
 		onCopyCode,
 		onSendEmote,
+		onTimerExpired,
 		class: className = ''
 	}: {
 		gameCode: string;
@@ -29,6 +30,7 @@
 		activeEmotes?: Record<string, string>;
 		onCopyCode: () => void;
 		onSendEmote?: (emote: string) => void;
+		onTimerExpired?: () => void;
 		class?: string;
 	} = $props();
 
@@ -43,7 +45,7 @@
 		if (status !== 'PLAYING' || timerDuration === 0) return;
 		const interval = setInterval(() => {
 			now = Date.now();
-		}, 500);
+		}, 400);
 		return () => clearInterval(interval);
 	});
 
@@ -51,6 +53,21 @@
 		if (timerDuration === 0 || status !== 'PLAYING') return null;
 		const elapsed = Math.floor((now - turnStartTime) / 1000);
 		return Math.max(0, timerDuration - elapsed);
+	});
+
+	let hasExpiredSent = $state(false);
+	$effect(() => {
+		// Reset flag when turn switches
+		if (turnPlayerId || turnStartTime) {
+			hasExpiredSent = false;
+		}
+	});
+
+	$effect(() => {
+		if (secondsLeft === 0 && status === 'PLAYING' && !hasExpiredSent && turnPlayerId === currentUserId && onTimerExpired) {
+			hasExpiredSent = true;
+			onTimerExpired();
+		}
 	});
 </script>
 
@@ -157,9 +174,14 @@
 			{/if}
 
 			<div class="flex flex-col min-w-0 pr-1">
-				<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
-					{p1 ? p1.name : 'Waiting...'} {p1 && p1.id === currentUserId ? '(You)' : ''}
-				</span>
+				<div class="flex items-center gap-1">
+					<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
+						{p1 ? p1.name : 'Waiting...'} {p1 && p1.id === currentUserId ? '(You)' : ''}
+					</span>
+					{#if p1 && !p1.isConnected && status === 'PLAYING'}
+						<span class="text-[8px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">Offline</span>
+					{/if}
+				</div>
 				{#if turnPlayerId === p1?.id && status === 'PLAYING'}
 					<span class="text-[9px] font-bold text-amber-800 uppercase tracking-tight">Active Turn</span>
 				{/if}
@@ -187,9 +209,14 @@
 			{/if}
 
 			<div class="flex flex-col min-w-0 pr-1">
-				<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
-					{p2 ? p2.name : 'Waiting...'} {p2 && p2.id === currentUserId ? '(You)' : ''}
-				</span>
+				<div class="flex items-center gap-1">
+					<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
+						{p2 ? p2.name : 'Waiting...'} {p2 && p2.id === currentUserId ? '(You)' : ''}
+					</span>
+					{#if p2 && !p2.isConnected && status === 'PLAYING'}
+						<span class="text-[8px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">Offline</span>
+					{/if}
+				</div>
 				{#if turnPlayerId === p2?.id && status === 'PLAYING'}
 					<span class="text-[9px] font-bold text-amber-800 uppercase tracking-tight">Active Turn</span>
 				{/if}

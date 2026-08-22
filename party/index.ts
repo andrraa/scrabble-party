@@ -114,6 +114,9 @@ export default class ScrabbleServer implements Party.Server {
 			case 'LEAVE_GAME':
 				this.handleLeaveGame(senderId, conn);
 				break;
+			case 'TIMER_EXPIRED':
+				this.handleTimerExpired(senderId, conn);
+				break;
 			case 'RESTART_GAME':
 				this.handleRestartGame(senderId, conn);
 				break;
@@ -145,7 +148,7 @@ export default class ScrabbleServer implements Party.Server {
 			return;
 		}
 
-		// 2. Fallback: Reconnecting disconnected player by name match (e.g. mobile background resume)
+		// 2. Fallback: Reconnecting disconnected player by name match
 		const disconnectedMatch = Object.values(this.state.players).find(
 			(p) => p.name.toLowerCase() === cleanName.toLowerCase() && !p.isConnected
 		);
@@ -223,13 +226,11 @@ export default class ScrabbleServer implements Party.Server {
 		this.connPlayerMap.delete(conn.id);
 
 		if (this.state.status === 'PLAYING') {
-			// Find opponent
 			const otherPlayerId = this.state.playerOrder.find((pid) => pid !== senderId);
 
 			this.state.status = 'FINISHED';
 			this.state.winnerId = otherPlayerId || null;
 
-			// Log forfeit
 			this.state.moveHistory.unshift({
 				id: `leave_${Date.now()}`,
 				playerId: leavingPlayer.id,
@@ -252,7 +253,6 @@ export default class ScrabbleServer implements Party.Server {
 			delete this.state.players[senderId];
 			this.state.playerOrder = this.state.playerOrder.filter((pid) => pid !== senderId);
 
-			// If Host left and another player is in lobby, promote to Host
 			if (leavingPlayer.isHost && this.state.playerOrder.length > 0) {
 				const newHostId = this.state.playerOrder[0];
 				if (this.state.players[newHostId]) {
@@ -276,6 +276,44 @@ export default class ScrabbleServer implements Party.Server {
 			return;
 		}
 		this.state.timerDuration = Math.max(0, Math.min(300, seconds));
+		this.broadcastState();
+	}
+
+	handleTimerExpired(senderId: string, conn: Party.Connection) {
+		if (this.state.status !== 'PLAYING' || this.state.timerDuration === 0) return;
+		if (this.state.turnPlayerId !== senderId && senderId !== '') return;
+
+		const player = this.state.players[this.state.turnPlayerId];
+		if (!player) return;
+
+		player.invalidAttempts = 0;
+		player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+		this.state.consecutivePasses++;
+
+		this.state.moveHistory.unshift({
+			id: `timeout_${Date.now()}`,
+			playerId: player.id,
+			playerName: player.name,
+			type: 'PASS',
+			totalScore: 0,
+			timestamp: Date.now()
+		});
+
+		for (const c of this.party.getConnections()) {
+			this.sendNotification(
+				c,
+				`⏱️ Waktu ${player.name} habis! Giliran otomatis di-pass.`,
+				'warning'
+			);
+		}
+
+		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+		if (this.state.consecutivePasses >= maxPasses) {
+			this.finishGame(null);
+		} else {
+			this.switchTurn();
+		}
+
 		this.broadcastState();
 	}
 
@@ -370,52 +408,42 @@ export default class ScrabbleServer implements Party.Server {
 			isFirstMove
 		);
 
+		// 1-Strike Rule: If move is invalid, immediately auto-pass turn to opponent!
 		if (!result.valid) {
-			player.invalidAttempts = (player.invalidAttempts || 0) + 1;
+			player.invalidAttempts = 0;
+			player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+			this.state.consecutivePasses++;
 
-			// If 3 consecutive invalid attempts in one turn -> Auto pass!
-			if (player.invalidAttempts >= 3) {
-				player.invalidAttempts = 0;
-				player.consecutivePasses = (player.consecutivePasses || 0) + 1;
-				this.state.consecutivePasses++;
+			this.state.moveHistory.unshift({
+				id: `pass_${Date.now()}`,
+				playerId: player.id,
+				playerName: player.name,
+				type: 'PASS',
+				totalScore: 0,
+				timestamp: Date.now()
+			});
 
-				this.state.moveHistory.unshift({
-					id: `pass_${Date.now()}`,
-					playerId: player.id,
-					playerName: player.name,
-					type: 'PASS',
-					totalScore: 0,
-					timestamp: Date.now()
-				});
-
-				for (const c of this.party.getConnections()) {
-					this.sendNotification(
-						c,
-						`⚠️ ${player.name} reached 3 invalid attempts. Turn automatically passed!`,
-						'warning'
-					);
-				}
-
-				const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-				if (this.state.consecutivePasses >= maxPasses) {
-					this.finishGame(null);
-				} else {
-					this.switchTurn();
-				}
-				this.broadcastState();
-				return;
+			for (const c of this.party.getConnections()) {
+				this.sendNotification(
+					c,
+					`❌ ${result.error || 'Langkah tidak valid.'} — Giliran ${player.name} langsung di-pass ke lawan!`,
+					'warning'
+				);
 			}
 
-			this.sendError(
-				conn,
-				`${result.error || 'Invalid move.'} (Attempt ${player.invalidAttempts}/3 — 3 invalid attempts will pass your turn)`
-			);
+			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+			if (this.state.consecutivePasses >= maxPasses) {
+				this.finishGame(null);
+			} else {
+				this.switchTurn();
+			}
 			this.broadcastState();
 			return;
 		}
 
-		// Reset invalid attempts counter on successful move
-		player.invalidAttempts = 0;
+		// Reset consecutive passes on valid move
+		player.consecutivePasses = 0;
+		this.state.consecutivePasses = 0;
 
 		// Apply move to board
 		for (const p of placements) {
@@ -443,8 +471,6 @@ export default class ScrabbleServer implements Party.Server {
 
 		// Update player score
 		player.score += result.totalScore;
-		player.consecutivePasses = 0;
-		this.state.consecutivePasses = 0;
 		this.state.remainingBagCount = this.state.tileBag.length;
 
 		// Add to move history
@@ -499,7 +525,6 @@ export default class ScrabbleServer implements Party.Server {
 			timestamp: Date.now()
 		});
 
-		// If 6 consecutive passes or both pass when bag is empty -> Game Over
 		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
 		if (this.state.consecutivePasses >= maxPasses) {
 			this.finishGame(null);
@@ -586,7 +611,6 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.turnStartTime = Date.now();
 		this.state.lastMoveTime = Date.now();
 
-		// Reset invalid attempts counter for all players on turn switch
 		for (const p of Object.values(this.state.players)) {
 			p.invalidAttempts = 0;
 		}

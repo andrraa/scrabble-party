@@ -47,7 +47,7 @@ export interface Player {
 	isHost: boolean;
 	isConnected: boolean;
 	consecutivePasses: number;
-	invalidAttempts: number; // 3 strikes = auto-pass
+	invalidAttempts: number;
 }
 
 export interface MoveHistoryItem {
@@ -88,7 +88,8 @@ export type ClientMessage =
 	| { type: 'RESTART_GAME'; playerId?: string }
 	| { type: 'SET_TIMER'; seconds: number; playerId?: string }
 	| { type: 'SEND_EMOTE'; emote: string; playerId?: string }
-	| { type: 'LEAVE_GAME'; playerId?: string };
+	| { type: 'LEAVE_GAME'; playerId?: string }
+	| { type: 'TIMER_EXPIRED'; playerId?: string };
 
 export type ServerMessage =
 	| { type: 'SYNC_STATE'; state: GameState; yourPlayerId: string }
