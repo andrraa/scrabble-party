@@ -262,6 +262,7 @@ export default class ScrabbleServer implements Party.Server {
 	}
 
 	handleNameChange(name: string, senderId: string, conn: Party.Connection) {
+		if (this.state.status !== 'LOBBY') return;
 		let cleanName = (name || 'Player').trim().slice(0, 20);
 		if (!cleanName || !this.state.players[senderId]) return;
 
