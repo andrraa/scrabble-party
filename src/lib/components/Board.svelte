@@ -5,18 +5,27 @@
 	let {
 		board,
 		pendingPlacements = [],
+		draftPlacements = [],
+		isMyTurn = true,
 		onPlaceTile,
 		onRemovePendingTile
 	}: {
 		board: BoardCell[][];
 		pendingPlacements?: PlacedTileMove[];
+		draftPlacements?: PlacedTileMove[];
+		isMyTurn?: boolean;
 		onPlaceTile: (row: number, col: number, tile?: ScrabbleTile) => void;
 		onRemovePendingTile: (row: number, col: number) => void;
 	} = $props();
 
-	function getPendingTileAt(r: number, c: number): ScrabbleTile | null {
-		const found = pendingPlacements.find((p) => p.row === r && p.col === c);
-		return found ? found.tile : null;
+	function getActiveTileInfo(r: number, c: number): { tile: ScrabbleTile; isOpponentDraft: boolean } | null {
+		if (isMyTurn) {
+			const found = pendingPlacements.find((p) => p.row === r && p.col === c);
+			return found ? { tile: found.tile, isOpponentDraft: false } : null;
+		}
+		// If it's opponent's turn, show opponent's live draft placements
+		const oppFound = draftPlacements.find((p) => p.row === r && p.col === c);
+		return oppFound ? { tile: oppFound.tile, isOpponentDraft: true } : null;
 	}
 
 	function handleDrop(e: DragEvent, r: number, c: number) {
@@ -38,9 +47,11 @@
 	<div class="scrabble-board-grid w-full h-full border border-[#8d7b68] sm:border-2 rounded-lg sm:rounded-xl overflow-hidden shadow-xs bg-[#c7baa7] gap-[1px] p-[1px]">
 		{#each board as rowCells, r}
 			{#each rowCells as cell, c}
+				{@const activeInfo = getActiveTileInfo(r, c)}
 				<Cell
 					{cell}
-					pendingTile={getPendingTileAt(r, c)}
+					pendingTile={activeInfo?.tile || null}
+					isOpponentDraft={activeInfo?.isOpponentDraft || false}
 					onclick={() => onPlaceTile(r, c)}
 					ondrop={(e) => handleDrop(e, r, c)}
 					onremove={() => onRemovePendingTile(r, c)}

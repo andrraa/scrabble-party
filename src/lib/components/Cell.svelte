@@ -6,6 +6,7 @@
 	let {
 		cell,
 		pendingTile = null,
+		isOpponentDraft = false,
 		isTarget = false,
 		onclick,
 		ondrop,
@@ -13,6 +14,7 @@
 	}: {
 		cell: BoardCell;
 		pendingTile?: ScrabbleTile | null;
+		isOpponentDraft?: boolean;
 		isTarget?: boolean;
 		onclick?: () => void;
 		ondrop?: (e: DragEvent) => void;
@@ -20,7 +22,7 @@
 	} = $props();
 
 	const tileToRender = $derived(cell.tile || pendingTile);
-	const isPending = $derived(!cell.isLocked && pendingTile !== null);
+	const isPending = $derived(!cell.isLocked && pendingTile !== null && !isOpponentDraft);
 	const isLocked = $derived(cell.isLocked && cell.tile !== null);
 
 	// Label for empty multiplier cells
@@ -96,6 +98,7 @@
 			size="board"
 			{isPending}
 			{isLocked}
+			{isOpponentDraft}
 		/>
 	{:else}
 		<span class="text-[clamp(7.5px,2.2vw,11px)] font-bold tracking-tighter leading-none select-none">

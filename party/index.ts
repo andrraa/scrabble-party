@@ -42,7 +42,8 @@ export default class ScrabbleServer implements Party.Server {
 			winnerId: null,
 			lastMoveTime: Date.now(),
 			timerDuration: 90, // default 90s, or 0 for off
-			allowDeadlock: false, // default false so casual games never prematurely end
+			allowDeadlock: false, // default false
+			draftPlacements: [], // live realtime preview of opponent drafting
 			turnStartTime: Date.now()
 		};
 	}
@@ -102,6 +103,9 @@ export default class ScrabbleServer implements Party.Server {
 				break;
 			case 'START_GAME':
 				this.handleStartGame(senderId, conn);
+				break;
+			case 'DRAFT_MOVE':
+				this.handleDraftMove(msg.placements, senderId, conn);
 				break;
 			case 'PLAY_MOVE':
 				this.handlePlayMove(msg.placements, senderId, conn);
@@ -223,6 +227,12 @@ export default class ScrabbleServer implements Party.Server {
 		}
 	}
 
+	handleDraftMove(placements: PlacedTileMove[], senderId: string, conn: Party.Connection) {
+		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) return;
+		this.state.draftPlacements = placements || [];
+		this.broadcastState();
+	}
+
 	handleLeaveGame(senderId: string, conn: Party.Connection) {
 		const leavingPlayer = this.state.players[senderId];
 		if (!leavingPlayer) return;
@@ -234,6 +244,7 @@ export default class ScrabbleServer implements Party.Server {
 
 			this.state.status = 'FINISHED';
 			this.state.winnerId = otherPlayerId || null;
+			this.state.draftPlacements = [];
 
 			this.state.moveHistory.unshift({
 				id: `leave_${Date.now()}`,
@@ -302,6 +313,7 @@ export default class ScrabbleServer implements Party.Server {
 		player.invalidAttempts = 0;
 		player.consecutivePasses = (player.consecutivePasses || 0) + 1;
 		this.state.consecutivePasses++;
+		this.state.draftPlacements = [];
 
 		this.state.moveHistory.unshift({
 			id: `timeout_${Date.now()}`,
@@ -368,6 +380,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.consecutivePasses = 0;
 		this.state.moveHistory = [];
 		this.state.winnerId = null;
+		this.state.draftPlacements = [];
 		this.state.status = 'PLAYING';
 
 		// Deal 7 tiles to each player
@@ -399,6 +412,8 @@ export default class ScrabbleServer implements Party.Server {
 
 		const player = this.state.players[senderId];
 		if (!player) return;
+
+		this.state.draftPlacements = [];
 
 		// Check if board has any locked tiles to determine if it's the first move
 		const isFirstMove = !this.state.board.some((row) => row.some((cell) => cell.isLocked));
@@ -525,6 +540,7 @@ export default class ScrabbleServer implements Party.Server {
 		player.invalidAttempts = 0;
 		player.consecutivePasses++;
 		this.state.consecutivePasses++;
+		this.state.draftPlacements = [];
 
 		this.state.moveHistory.unshift({
 			id: `pass_${Date.now()}`,
@@ -561,6 +577,7 @@ export default class ScrabbleServer implements Party.Server {
 
 		const player = this.state.players[senderId];
 		player.invalidAttempts = 0;
+		this.state.draftPlacements = [];
 
 		if (!tileIds || tileIds.length === 0 || tileIds.length > player.rack.length) {
 			this.sendError(conn, 'Invalid tile selection for swap.');
@@ -623,6 +640,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.turnPlayerId = order[nextIndex];
 		this.state.turnStartTime = Date.now();
 		this.state.lastMoveTime = Date.now();
+		this.state.draftPlacements = [];
 
 		for (const p of Object.values(this.state.players)) {
 			p.invalidAttempts = 0;
@@ -649,6 +667,7 @@ export default class ScrabbleServer implements Party.Server {
 
 	finishGame(finisherId: string | null) {
 		this.state.status = 'FINISHED';
+		this.state.draftPlacements = [];
 
 		// Scrabble end-game scoring adjustment
 		if (finisherId) {

@@ -109,6 +109,17 @@
 		};
 	});
 
+	// Broadcast live tile draft to opponent in realtime
+	$effect(() => {
+		if (isMyTurn && socket && isConnected && gameState.status === 'PLAYING') {
+			sendSocketMessage(socket, {
+				type: 'DRAFT_MOVE',
+				placements: pendingPlacements,
+				playerId: currentUserId
+			});
+		}
+	});
+
 	function showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
 		if (toastTimeout) clearTimeout(toastTimeout);
 		activeToast = { id: Date.now(), type, message };
@@ -704,6 +715,8 @@
 						<Board
 							board={gameState.board}
 							{pendingPlacements}
+							draftPlacements={gameState.draftPlacements || []}
+							{isMyTurn}
 							onPlaceTile={handlePlaceTile}
 							onRemovePendingTile={handleRemovePendingTile}
 						/>

@@ -76,6 +76,7 @@ export interface GameState {
 	lastMoveTime: number;
 	timerDuration: number; // 0 = no timer, or 60, 90, 120, 180 seconds
 	allowDeadlock: boolean; // true = 6x pass ends game, false = no deadlock end
+	draftPlacements?: PlacedTileMove[]; // Live realtime preview of opponent drafting tiles
 	turnStartTime: number;
 }
 
@@ -84,6 +85,7 @@ export type ClientMessage =
 	| { type: 'JOIN'; name: string; playerId?: string }
 	| { type: 'START_GAME'; playerId?: string }
 	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[]; playerId?: string }
+	| { type: 'DRAFT_MOVE'; placements: PlacedTileMove[]; playerId?: string }
 	| { type: 'PASS_TURN'; playerId?: string }
 	| { type: 'SWAP_TILES'; tileIds: string[]; playerId?: string }
 	| { type: 'RESTART_GAME'; playerId?: string }
