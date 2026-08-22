@@ -319,10 +319,7 @@
 		// Place tile & play sound
 		playTilePlaceSound();
 		pendingPlacements = [...pendingPlacements, { row, col, tile: tileToPlace }];
-
-		// Auto-select next available tile in rack for fast consecutive placement
-		const nextAvail = availableRack.find((t) => t.id !== tileToPlace.id);
-		selectedRackTile = nextAvail || null;
+		selectedRackTile = null;
 	}
 
 	function handleSelectBlankLetter(letter: string) {
@@ -337,10 +334,7 @@
 		pendingPlacements = [...pendingPlacements, { row, col, tile: assignedTile }];
 		showBlankDialog = false;
 		pendingBlankCoord = null;
-
-		// Auto-select next tile
-		const nextAvail = availableRack.find((t) => t.id !== tile.id);
-		selectedRackTile = nextAvail || null;
+		selectedRackTile = null;
 	}
 
 	function handleCancelBlank() {
