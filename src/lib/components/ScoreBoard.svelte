@@ -10,12 +10,14 @@
 		remainingBagCount,
 		currentUserId,
 		status,
+		winnerId = null,
 		timerDuration = 0,
 		turnStartTime = 0,
 		activeEmotes = {},
 		onCopyCode,
 		onSendEmote,
 		onTimerExpired,
+		onOpenResults,
 		class: className = ''
 	}: {
 		gameCode: string;
@@ -25,12 +27,14 @@
 		remainingBagCount: number;
 		currentUserId: string;
 		status: 'LOBBY' | 'PLAYING' | 'FINISHED';
+		winnerId?: string | null;
 		timerDuration?: number;
 		turnStartTime?: number;
 		activeEmotes?: Record<string, string>;
 		onCopyCode: () => void;
 		onSendEmote?: (emote: string) => void;
 		onTimerExpired?: () => void;
+		onOpenResults?: () => void;
 		class?: string;
 	} = $props();
 
@@ -57,7 +61,6 @@
 
 	let hasExpiredSent = $state(false);
 	$effect(() => {
-		// Reset flag when turn switches
 		if (turnPlayerId || turnStartTime) {
 			hasExpiredSent = false;
 		}
@@ -74,7 +77,7 @@
 <div class="flex flex-col gap-2 w-full bg-white border border-slate-200/90 rounded-xl md:rounded-2xl p-2.5 sm:p-3 shadow-2xs {className}">
 	<!-- Top Bar Header: Structured 2-row layout for 100% responsiveness -->
 	<div class="flex flex-col gap-1.5 pb-1.5 border-b border-slate-100 text-xs">
-		<!-- Sub-row 1: Room Code + Emote + Game Status -->
+		<!-- Sub-row 1: Room Code + Emote + Game Status / Results Button -->
 		<div class="flex items-center justify-between gap-2">
 			<div class="flex items-center gap-1.5 min-w-0">
 				<span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">ROOM</span>
@@ -88,7 +91,7 @@
 				</button>
 			</div>
 
-			<!-- Right side: Reaction Popover (left of Playing badge) + Status Badge -->
+			<!-- Right side: Emote Popover + Status Badge / Results Button -->
 			<div class="flex items-center gap-1.5 shrink-0">
 				{#if onSendEmote && status === 'PLAYING'}
 					<div class="relative">
@@ -109,7 +112,6 @@
 								class="fixed inset-0 z-40 bg-transparent"
 								onclick={() => (showEmotePicker = false)}
 							></div>
-							<!-- Popover shifted rightwards on mobile to prevent left-edge collision -->
 							<div
 								class="absolute top-full -right-12 sm:right-0 mt-1.5 z-50 p-2 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl flex flex-wrap sm:flex-nowrap gap-1 w-[220px] sm:w-auto animate-in fade-in zoom-in-95 duration-100"
 							>
@@ -135,7 +137,15 @@
 				{:else if status === 'PLAYING'}
 					<Badge variant="indigo" class="text-[10px] py-0.5 px-2 font-bold">PLAYING</Badge>
 				{:else}
-					<Badge variant="success" class="text-[10px] py-0.5 px-2 font-bold">FINISHED</Badge>
+					<!-- Re-open Results Modal Button -->
+					<button
+						onclick={onOpenResults}
+						class="px-2.5 py-0.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer animate-pulse"
+						title="View Victory Results"
+					>
+						<span>🏆</span>
+						<span>Results</span>
+					</button>
 				{/if}
 			</div>
 		</div>
@@ -162,9 +172,11 @@
 	<div class="grid grid-cols-2 lg:grid-cols-1 gap-2">
 		<!-- Player 1 Card -->
 		<div
-			class="relative flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all {turnPlayerId === p1?.id && status === 'PLAYING'
-				? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/50 shadow-xs'
-				: 'bg-slate-50 border-slate-200'}"
+			class="relative flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all {status === 'FINISHED' && winnerId === p1?.id
+				? 'bg-gradient-to-r from-amber-50 to-amber-100/90 border-amber-400 ring-2 ring-amber-400/80 shadow-xs'
+				: turnPlayerId === p1?.id && status === 'PLAYING'
+					? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/50 shadow-xs'
+					: 'bg-slate-50 border-slate-200'}"
 		>
 			<!-- Emote Speech Bubble -->
 			{#if p1 && activeEmotes[p1.id]}
@@ -175,6 +187,9 @@
 
 			<div class="flex flex-col min-w-0 pr-1">
 				<div class="flex items-center gap-1">
+					{#if status === 'FINISHED' && winnerId === p1?.id}
+						<span class="text-xs" title="Match Winner">👑</span>
+					{/if}
 					<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
 						{p1 ? p1.name : 'Waiting...'} {p1 && p1.id === currentUserId ? '(You)' : ''}
 					</span>
@@ -182,7 +197,9 @@
 						<span class="text-[8px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">Offline</span>
 					{/if}
 				</div>
-				{#if turnPlayerId === p1?.id && status === 'PLAYING'}
+				{#if status === 'FINISHED' && winnerId === p1?.id}
+					<span class="text-[9px] font-extrabold text-amber-900 uppercase tracking-tight">Winner 🏆</span>
+				{:else if turnPlayerId === p1?.id && status === 'PLAYING'}
 					<span class="text-[9px] font-bold text-amber-800 uppercase tracking-tight">Active Turn</span>
 				{/if}
 			</div>
@@ -197,9 +214,11 @@
 
 		<!-- Player 2 Card -->
 		<div
-			class="relative flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all {turnPlayerId === p2?.id && status === 'PLAYING'
-				? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/50 shadow-xs'
-				: 'bg-slate-50 border-slate-200'}"
+			class="relative flex items-center justify-between p-2 md:p-2.5 rounded-xl border transition-all {status === 'FINISHED' && winnerId === p2?.id
+				? 'bg-gradient-to-r from-amber-50 to-amber-100/90 border-amber-400 ring-2 ring-amber-400/80 shadow-xs'
+				: turnPlayerId === p2?.id && status === 'PLAYING'
+					? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-400/50 shadow-xs'
+					: 'bg-slate-50 border-slate-200'}"
 		>
 			<!-- Emote Speech Bubble -->
 			{#if p2 && activeEmotes[p2.id]}
@@ -210,6 +229,9 @@
 
 			<div class="flex flex-col min-w-0 pr-1">
 				<div class="flex items-center gap-1">
+					{#if status === 'FINISHED' && winnerId === p2?.id}
+						<span class="text-xs" title="Match Winner">👑</span>
+					{/if}
 					<span class="font-semibold text-xs sm:text-sm text-slate-900 truncate">
 						{p2 ? p2.name : 'Waiting...'} {p2 && p2.id === currentUserId ? '(You)' : ''}
 					</span>
@@ -217,7 +239,9 @@
 						<span class="text-[8px] px-1 py-0.2 rounded bg-amber-100 text-amber-800 font-bold">Offline</span>
 					{/if}
 				</div>
-				{#if turnPlayerId === p2?.id && status === 'PLAYING'}
+				{#if status === 'FINISHED' && winnerId === p2?.id}
+					<span class="text-[9px] font-extrabold text-amber-900 uppercase tracking-tight">Winner 🏆</span>
+				{:else if turnPlayerId === p2?.id && status === 'PLAYING'}
 					<span class="text-[9px] font-bold text-amber-800 uppercase tracking-tight">Active Turn</span>
 				{/if}
 			</div>

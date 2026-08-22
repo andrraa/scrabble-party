@@ -61,6 +61,7 @@
 	let showLeaveDialog = $state(false);
 	let showBagInfo = $state(false);
 	let showNameDialog = $state(false);
+	let showGameOverModal = $state(true);
 	let tempNewName = $state('');
 
 	// Game state
@@ -745,12 +746,14 @@
 						remainingBagCount={gameState.remainingBagCount}
 						{currentUserId}
 						status={gameState.status}
+						winnerId={gameState.winnerId}
 						timerDuration={gameState.timerDuration}
 						turnStartTime={gameState.turnStartTime}
 						{activeEmotes}
 						onCopyCode={handleCopyLink}
 						onSendEmote={handleSendEmote}
 						onTimerExpired={handleTimerExpired}
+						onOpenResults={() => (showGameOverModal = true)}
 					/>
 				</div>
 
@@ -800,12 +803,14 @@
 						remainingBagCount={gameState.remainingBagCount}
 						{currentUserId}
 						status={gameState.status}
+						winnerId={gameState.winnerId}
 						timerDuration={gameState.timerDuration}
 						turnStartTime={gameState.turnStartTime}
 						{activeEmotes}
 						onCopyCode={handleCopyLink}
 						onSendEmote={handleSendEmote}
 						onTimerExpired={handleTimerExpired}
+						onOpenResults={() => (showGameOverModal = true)}
 					/>
 
 					<div class="flex-1 min-h-0 overflow-hidden">
@@ -962,8 +967,10 @@
 	/>
 
 	<GameOverModal
+		isOpen={showGameOverModal}
 		{gameState}
 		{currentUserId}
+		onClose={() => (showGameOverModal = false)}
 		onRestart={handleRestartGame}
 	/>
 </main>
