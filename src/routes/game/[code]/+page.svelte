@@ -524,84 +524,73 @@
 
 <main class="min-h-screen {gameState.status !== 'LOBBY' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none transition-colors duration-200">
 	<div class="max-w-6xl w-full mx-auto flex flex-col gap-1.5 sm:gap-2 md:gap-3 flex-1 min-h-0">
-		<!-- Top Bar / Navigation -->
-		<header class="flex items-center justify-between py-1 px-2 shrink-0 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
-			<div class="flex items-center gap-2">
-				<a href="/" class="flex items-center gap-2 group cursor-pointer">
-					<span class="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/90 border border-amber-300/80 shadow-xs flex items-center justify-center font-serif font-bold text-amber-950 text-base">
+		<!-- Top Bar / Navigation (Ultra compact for mobile) -->
+		<header class="flex items-center justify-between py-1 px-2 sm:px-3 shrink-0 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+			<div class="flex items-center gap-2 min-w-0">
+				<a href="/" class="flex items-center gap-1.5 group cursor-pointer shrink-0">
+					<span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/90 border border-amber-300/80 shadow-xs flex items-center justify-center font-serif font-bold text-amber-950 text-sm sm:text-base">
 						S
 					</span>
-					<span class="font-bold text-sm md:text-base text-slate-800 group-hover:text-slate-950 transition-colors">
+					<span class="font-bold text-sm sm:text-base text-slate-800 group-hover:text-slate-950 transition-colors hidden sm:inline">
 						Scrabble
 					</span>
 				</a>
 			</div>
 
-			<div class="flex items-center gap-1 sm:gap-2">
-				<!-- Online Status Badge -->
-				{#if isConnected}
-					<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-[11px] md:text-xs font-medium text-emerald-700 border border-emerald-200">
-						<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-						Online
-					</span>
-				{:else}
-					<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-[11px] md:text-xs font-medium text-amber-700 border border-amber-200">
-						<span class="w-2 h-2 rounded-full bg-amber-500"></span>
-						Connecting...
-					</span>
-				{/if}
+			<div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+				<!-- Online Status Dot -->
+				<div class="flex items-center gap-1 px-2 py-1 rounded-full {isConnected ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'} text-[11px] font-medium">
+					<span class="w-2 h-2 rounded-full {isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}"></span>
+					<span class="hidden sm:inline">{isConnected ? 'Online' : 'Connecting'}</span>
+				</div>
 
-				<!-- Audio Mute Toggle Button -->
-				<button
-					onclick={toggleMute}
-					class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition-colors cursor-pointer shrink-0"
-					title={isAudioMuted ? 'Unmute Sound' : 'Mute Sound'}
-				>
-					{isAudioMuted ? '🔇' : '🔊'}
-				</button>
-
-				<!-- Change Name Button -->
-				<button
-					onclick={handleOpenNameModal}
-					class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-					title="Change display name"
-				>
-					Name
-				</button>
-
-				<!-- Tile Bag Remaining / Distribution Button (Accessible on Mobile & Desktop) -->
+				<!-- Tile Bag Remaining Button -->
 				{#if gameState.status === 'PLAYING'}
 					<button
+						type="button"
 						onclick={() => (showBagInfo = true)}
-						class="px-2 sm:px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer flex items-center gap-1"
-						title="View remaining tile pool"
+						class="h-8 px-2 sm:px-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 transition-colors cursor-pointer flex items-center gap-1 shrink-0 shadow-2xs"
+						title="View unseen tile pool"
 					>
 						<span>🎒</span>
-						<span class="text-[11px] font-semibold">{gameState.remainingBagCount}</span>
+						<span class="text-[11px] font-mono font-bold">{gameState.remainingBagCount}</span>
 					</button>
 				{/if}
 
 				<!-- Mobile Log Drawer Toggle -->
 				{#if gameState.status === 'PLAYING'}
 					<button
+						type="button"
 						onclick={() => (showMobileLog = !showMobileLog)}
-						class="lg:hidden px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+						class="lg:hidden h-8 px-2 sm:px-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+						title="Game History"
 					>
-						<span>Log</span>
-						<span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] text-slate-600 font-bold">
+						<span>📜</span>
+						<span class="text-[10px] font-bold text-slate-600">
 							{gameState.moveHistory.length}
 						</span>
 					</button>
 				{/if}
 
+				<!-- Audio Mute Toggle Button -->
+				<button
+					type="button"
+					onclick={toggleMute}
+					class="w-8 h-8 rounded-xl flex items-center justify-center text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 transition-colors cursor-pointer shrink-0 shadow-2xs"
+					title={isAudioMuted ? 'Unmute Sound' : 'Mute Sound'}
+				>
+					{isAudioMuted ? '🔇' : '🔊'}
+				</button>
+
 				<!-- Leave Room Icon Button -->
 				<button
+					type="button"
 					onclick={() => (showLeaveDialog = true)}
-					class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200/80 transition-colors cursor-pointer shrink-0 shadow-2xs"
+					class="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200/60 transition-colors cursor-pointer shrink-0 shadow-2xs"
 					title="Leave Match"
 					aria-label="Leave Match"
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
 						<polyline points="16 17 21 12 16 7" />
 						<line x1="21" y1="12" x2="9" y2="12" />
