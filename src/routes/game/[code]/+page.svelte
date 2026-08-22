@@ -14,8 +14,7 @@
 		playBingoSound,
 		playErrorSound,
 		playEmoteSound,
-		setMuted,
-		getMuted
+		setMuted
 	} from '$lib/audio/sound-effects';
 	import Board from '$lib/components/Board.svelte';
 	import Rack from '$lib/components/Rack.svelte';
@@ -35,6 +34,7 @@
 	let currentUserId = $state<string>('');
 	let isConnected = $state(false);
 	let isAudioMuted = $state(false);
+	let isDarkMode = $state(false);
 	let storedPlayerName = $state('Player');
 
 	// Translucent floating toast state
@@ -59,6 +59,7 @@
 	let showSwapDialog = $state(false);
 	let showMobileLog = $state(false);
 	let showLeaveDialog = $state(false);
+	let showPassDialog = $state(false);
 	let showBagInfo = $state(false);
 	let showNameDialog = $state(false);
 	let showGameOverModal = $state(true);
@@ -94,6 +95,35 @@
 		if (!currentPlayer) return [];
 		const placedIds = new Set(pendingPlacements.map((p) => p.tile.id));
 		return currentPlayer.rack.filter((t) => !placedIds.has(t.id));
+	});
+
+	// Calculate exact remaining unseen tiles per letter
+	const remainingTileCounts = $derived.by(() => {
+		const counts: Record<string, number> = { ...LETTER_DISTRIBUTION };
+
+		// Subtract all locked board tiles
+		for (const row of gameState.board) {
+			for (const cell of row) {
+				if (cell.tile) {
+					const key = cell.tile.isBlank ? '_' : cell.tile.letter.toUpperCase();
+					if (counts[key] !== undefined) {
+						counts[key] = Math.max(0, counts[key] - 1);
+					}
+				}
+			}
+		}
+
+		// Subtract current player's rack tiles
+		if (currentPlayer) {
+			for (const t of currentPlayer.rack) {
+				const key = t.isBlank ? '_' : t.letter.toUpperCase();
+				if (counts[key] !== undefined) {
+					counts[key] = Math.max(0, counts[key] - 1);
+				}
+			}
+		}
+
+		return counts;
 	});
 
 	// Live word & score preview estimation
@@ -137,7 +167,6 @@
 			case 'SYNC_STATE':
 				const myIncoming = msg.state.players[msg.yourPlayerId];
 				if (myIncoming && currentPlayer && currentPlayer.rack.length > 0) {
-					// Preserve local custom rack arrangement order across server syncs
 					const incomingIds = new Set(myIncoming.rack.map((t) => t.id));
 					const preserved = currentPlayer.rack.filter((t) => incomingIds.has(t.id));
 					const preservedIds = new Set(preserved.map((t) => t.id));
@@ -149,8 +178,8 @@
 				currentUserId = msg.yourPlayerId;
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
+					localStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
 				}
-				// If turn changed, reset pending placements
 				if (msg.state.turnPlayerId !== currentUserId) {
 					pendingPlacements = [];
 					selectedRackTile = null;
@@ -200,6 +229,12 @@
 				isAudioMuted = true;
 				setMuted(true);
 			}
+
+			const savedTheme = localStorage.getItem('scrabble_theme');
+			if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+				isDarkMode = true;
+				document.documentElement.classList.add('dark');
+			}
 		}
 
 		socket = createGameSocket(
@@ -208,7 +243,7 @@
 			() => {
 				isConnected = true;
 				if (socket) {
-					const activePid = currentUserId || (typeof window !== 'undefined' ? sessionStorage.getItem(`scrabble_pid_${roomCode}`) : '') || undefined;
+					const activePid = currentUserId || (typeof window !== 'undefined' ? sessionStorage.getItem(`scrabble_pid_${roomCode}`) || localStorage.getItem(`scrabble_pid_${roomCode}`) : '') || undefined;
 					sendSocketMessage(socket, {
 						type: 'JOIN',
 						name: storedPlayerName,
@@ -221,17 +256,15 @@
 			}
 		);
 
-		// Auto-add bot if opened with bot query param
 		if (page.url.searchParams.get('bot') === '1') {
 			setTimeout(() => {
 				handleAddBot();
 			}, 700);
 		}
 
-		// Mobile background/resume listener
 		visibilityListener = () => {
 			if (document.visibilityState === 'visible' && socket) {
-				const activePid = currentUserId || sessionStorage.getItem(`scrabble_pid_${roomCode}`) || undefined;
+				const activePid = currentUserId || sessionStorage.getItem(`scrabble_pid_${roomCode}`) || localStorage.getItem(`scrabble_pid_${roomCode}`) || undefined;
 				sendSocketMessage(socket, {
 					type: 'JOIN',
 					name: storedPlayerName,
@@ -257,6 +290,14 @@
 		setMuted(isAudioMuted);
 		if (typeof window !== 'undefined') {
 			localStorage.setItem('scrabble_mute', isAudioMuted ? 'true' : 'false');
+		}
+	}
+
+	function toggleDarkMode() {
+		isDarkMode = !isDarkMode;
+		if (typeof document !== 'undefined') {
+			document.documentElement.classList.toggle('dark', isDarkMode);
+			localStorage.setItem('scrabble_theme', isDarkMode ? 'dark' : 'light');
 		}
 	}
 
@@ -327,7 +368,6 @@
 		showNameDialog = false;
 	}
 
-	// Mobile & Desktop Tap-to-Place Tile Interaction (Allowed at any time for rearranging)
 	function handleSelectRackTile(tile: ScrabbleTile | null) {
 		if (!tile || selectedRackTile?.id === tile.id) {
 			selectedRackTile = null;
@@ -341,7 +381,6 @@
 		const target = e.target as HTMLElement | null;
 		if (!target) return;
 
-		// Check if click was inside the rack stand, board grid, buttons, or modals
 		const isBoard = target.closest('.scrabble-board-grid');
 		const isRack = target.closest('.grid-cols-7');
 		const isButton = target.closest('button');
@@ -359,12 +398,10 @@
 			return;
 		}
 
-		// Don't place on existing locked board tiles
 		if (gameState.board[row][col].tile !== null && gameState.board[row][col].isLocked) {
 			return;
 		}
 
-		// Don't place on already pending cell
 		if (pendingPlacements.some((p) => p.row === row && p.col === col)) {
 			return;
 		}
@@ -372,14 +409,12 @@
 		const tileToPlace = droppedTile || selectedRackTile;
 		if (!tileToPlace) return;
 
-		// Check if it is a wildcard blank tile
 		if (tileToPlace.isBlank && !tileToPlace.assignedLetter) {
 			pendingBlankCoord = { row, col, tile: tileToPlace };
 			showBlankDialog = true;
 			return;
 		}
 
-		// Place tile & play sound
 		playTilePlaceSound();
 		pendingPlacements = [...pendingPlacements, { row, col, tile: tileToPlace }];
 		selectedRackTile = null;
@@ -438,10 +473,15 @@
 		});
 	}
 
-	function handlePassTurn() {
+	function handleTriggerPass() {
 		if (!socket || !isMyTurn) return;
-		if (confirm('Are you sure you want to pass your turn?')) {
-			handleRecallAll();
+		showPassDialog = true;
+	}
+
+	function handleConfirmPass() {
+		showPassDialog = false;
+		handleRecallAll();
+		if (socket) {
 			sendSocketMessage(socket, { type: 'PASS_TURN', playerId: currentUserId });
 		}
 	}
@@ -472,7 +512,7 @@
 		if (typeof window !== 'undefined') {
 			const cleanUrl = `${window.location.origin}/game/${roomCode}`;
 			navigator.clipboard.writeText(cleanUrl);
-			showToast('Invite link copied to clipboard!', 'info');
+			showToast('Invite link copied!', 'info');
 		}
 	}
 
@@ -482,6 +522,7 @@
 		}
 		if (typeof window !== 'undefined') {
 			sessionStorage.removeItem(`scrabble_pid_${roomCode}`);
+			localStorage.removeItem(`scrabble_pid_${roomCode}`);
 		}
 		if (socket) {
 			socket.close();
@@ -496,13 +537,12 @@
 
 <svelte:window onclick={handleGlobalClick} />
 
-<main class="min-h-screen {gameState.status !== 'LOBBY' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
+<main class="min-h-screen {gameState.status !== 'LOBBY' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none transition-colors duration-200">
 	<div class="max-w-6xl w-full mx-auto flex flex-col gap-1.5 sm:gap-2 md:gap-3 flex-1 min-h-0">
 		<!-- Top Bar / Navigation -->
 		<header class="flex items-center justify-between py-1 px-2 shrink-0 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
 			<div class="flex items-center gap-2">
 				<a href="/" class="flex items-center gap-2 group cursor-pointer">
-					<!-- Rounded navbar logo tile -->
 					<span class="w-8 h-8 rounded-xl bg-gradient-to-b from-amber-50 to-amber-100/90 border border-amber-300/80 shadow-xs flex items-center justify-center font-serif font-bold text-amber-950 text-base">
 						S
 					</span>
@@ -512,19 +552,28 @@
 				</a>
 			</div>
 
-			<div class="flex items-center gap-1.5 sm:gap-2">
+			<div class="flex items-center gap-1 sm:gap-2">
 				<!-- Online Status Badge -->
 				{#if isConnected}
-					<span class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-emerald-50 text-[11px] md:text-xs font-medium text-emerald-700 border border-emerald-200">
+					<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-[11px] md:text-xs font-medium text-emerald-700 border border-emerald-200">
 						<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
 						Online
 					</span>
 				{:else}
-					<span class="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full bg-amber-50 text-[11px] md:text-xs font-medium text-amber-700 border border-amber-200">
+					<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-[11px] md:text-xs font-medium text-amber-700 border border-amber-200">
 						<span class="w-2 h-2 rounded-full bg-amber-500"></span>
 						Connecting...
 					</span>
 				{/if}
+
+				<!-- Dark Mode Toggle Button -->
+				<button
+					onclick={toggleDarkMode}
+					class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition-colors cursor-pointer shrink-0"
+					title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+				>
+					{isDarkMode ? '☀️' : '🌙'}
+				</button>
 
 				<!-- Audio Mute Toggle Button -->
 				<button
@@ -539,19 +588,20 @@
 				<button
 					onclick={handleOpenNameModal}
 					class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-					title="Change your player name"
+					title="Change display name"
 				>
 					Name
 				</button>
 
-				<!-- Tile Bag Distribution Reference Button -->
+				<!-- Tile Bag Remaining / Distribution Button (Accessible on Mobile & Desktop) -->
 				{#if gameState.status === 'PLAYING'}
 					<button
 						onclick={() => (showBagInfo = true)}
-						class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-						title="View standard tile distribution"
+						class="px-2 sm:px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+						title="View remaining tile pool"
 					>
-						Tiles ({gameState.remainingBagCount})
+						<span>🎒</span>
+						<span class="text-[11px] font-semibold">{gameState.remainingBagCount}</span>
 					</button>
 				{/if}
 
@@ -559,7 +609,7 @@
 				{#if gameState.status === 'PLAYING'}
 					<button
 						onclick={() => (showMobileLog = !showMobileLog)}
-						class="lg:hidden px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+						class="lg:hidden px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
 					>
 						<span>Log</span>
 						<span class="px-1.5 py-0.2 rounded-full bg-slate-200 text-[10px] text-slate-600 font-bold">
@@ -810,7 +860,7 @@
 							onShuffle={handleShuffleRack}
 							onRecall={handleRecallAll}
 							onOpenSwap={() => (showSwapDialog = true)}
-							onPass={handlePassTurn}
+							onPass={handleTriggerPass}
 							onPlay={handlePlayWord}
 							onReorderRack={(newRack) => {
 								if (currentPlayer) currentPlayer.rack = newRack;
@@ -914,36 +964,79 @@
 		</div>
 	{/if}
 
-	<!-- Tile Distribution Info Dialog -->
-	{#if showBagInfo}
+	<!-- Custom Pass Turn Confirmation Dialog -->
+	{#if showPassDialog}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+			onclick={() => (showPassDialog = false)}
+		>
+			<div
+				class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 flex flex-col gap-4 text-center"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div>
+					<h3 class="text-lg font-bold text-slate-900">Pass Turn?</h3>
+					<p class="text-xs text-slate-500 mt-1">Are you sure you want to pass your turn? You will score 0 points this turn.</p>
+				</div>
+
+				<div class="flex items-center justify-center gap-2 pt-2">
+					<Button variant="outline" size="sm" onclick={() => (showPassDialog = false)} class="flex-1">
+						Cancel
+					</Button>
+					<Button variant="amber" size="sm" onclick={handleConfirmPass} class="flex-1">
+						Confirm Pass
+					</Button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Tile Distribution & Exact Remaining Pool Dialog -->
+	{#if showBagInfo}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
 			onclick={() => (showBagInfo = false)}
 		>
 			<div
-				class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-3"
+				class="bg-white rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl border border-slate-200 flex flex-col gap-3.5 max-h-[85vh] overflow-y-auto"
 				onclick={(e) => e.stopPropagation()}
 			>
 				<div class="flex items-center justify-between pb-2 border-b border-slate-100">
-					<h3 class="font-bold text-sm md:text-base text-slate-900">Tile Bag Distribution</h3>
-					<button onclick={() => (showBagInfo = false)} class="text-xs font-semibold text-slate-400 hover:text-slate-700">✕</button>
+					<div>
+						<h3 class="font-bold text-sm md:text-base text-slate-900">Unseen Tile Pool</h3>
+						<p class="text-[11px] text-slate-500 mt-0.5">{gameState.remainingBagCount} tiles remaining in bag (excluding your rack)</p>
+					</div>
+					<button onclick={() => (showBagInfo = false)} class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold cursor-pointer">✕</button>
 				</div>
-				<p class="text-xs text-slate-500">Standard English Scrabble total: 100 tiles</p>
 
-				<div class="grid grid-cols-6 sm:grid-cols-7 gap-1.5 py-1 text-center">
-					{#each Object.entries(LETTER_DISTRIBUTION) as [letter, count]}
+				<div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5 py-1 text-center">
+					{#each Object.entries(LETTER_DISTRIBUTION) as [letter, totalCount]}
 						{@const val = LETTER_VALUES[letter] || 0}
-						<div class="p-1.5 rounded-lg bg-amber-50/80 border border-amber-200 flex flex-col items-center">
-							<span class="font-bold text-xs text-amber-950">{letter === '_' ? 'BLANK' : letter}</span>
-							<span class="text-[9px] text-amber-700">{count}x ({val}pt)</span>
+						{@const remaining = remainingTileCounts[letter] ?? 0}
+						{@const isDepleted = remaining === 0}
+						<div class="p-2 rounded-xl border flex flex-col items-center justify-between transition-all {isDepleted
+							? 'bg-slate-50 border-slate-200/60 opacity-40'
+							: 'bg-gradient-to-b from-amber-50 to-amber-100/70 border-amber-300 shadow-2xs'}">
+							<div class="flex items-center justify-between w-full text-[10px] text-slate-400 font-medium">
+								<span>{val}pt</span>
+								<span class="text-[9px] font-bold {isDepleted ? 'text-slate-400' : 'text-amber-800'}">{remaining}/{totalCount}</span>
+							</div>
+							<span class="font-bold text-base sm:text-lg {isDepleted ? 'text-slate-400 line-through' : 'text-amber-950'} font-serif my-0.5">
+								{letter === '_' ? '★' : letter}
+							</span>
+							<span class="text-[9px] font-semibold {isDepleted ? 'text-slate-400' : 'text-amber-800'}">
+								{isDepleted ? 'Out' : `${remaining} left`}
+							</span>
 						</div>
 					{/each}
 				</div>
 
 				<div class="flex justify-end pt-1">
-					<Button variant="outline" size="sm" onclick={() => (showBagInfo = false)}>Close</Button>
+					<Button variant="default" size="sm" onclick={() => (showBagInfo = false)}>Close</Button>
 				</div>
 			</div>
 		</div>

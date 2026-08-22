@@ -6,57 +6,15 @@
 		--foreground: 224 71% 4%;
 		--card: 0 0% 100%;
 		--card-foreground: 224 71% 4%;
-		--popover: 0 0% 100%;
-		--popover-foreground: 224 71% 4%;
-		--primary: 220 90% 45%;
-		--primary-foreground: 210 20% 98%;
-		--secondary: 220 14% 94%;
-		--secondary-foreground: 220 40% 12%;
-		--muted: 220 14% 94%;
-		--muted-foreground: 220 10% 46%;
-		--accent: 220 14% 92%;
-		--accent-foreground: 220 40% 12%;
-		--destructive: 0 84% 60%;
-		--destructive-foreground: 210 20% 98%;
 		--border: 220 13% 88%;
-		--input: 220 13% 88%;
-		--ring: 220 90% 45%;
-		--radius: 0.75rem;
-
-		/* Scrabble board theme */
-		--board-bg: #e2d9cc;
-		--board-border: #8d7b68;
-		--tile-bg: #fffdfa;
-		--tile-border: #d4c5b3;
-		--tile-shadow: 0 2px 4px rgba(60, 40, 20, 0.15);
 	}
 
 	.dark {
-		--background: 224 71% 6%;
+		--background: 224 71% 4%;
 		--foreground: 210 20% 98%;
-		--card: 224 71% 9%;
+		--card: 224 71% 7%;
 		--card-foreground: 210 20% 98%;
-		--popover: 224 71% 9%;
-		--popover-foreground: 210 20% 98%;
-		--primary: 217 91% 60%;
-		--primary-foreground: 222 47% 11%;
-		--secondary: 215 28% 17%;
-		--secondary-foreground: 210 20% 98%;
-		--muted: 215 28% 17%;
-		--muted-foreground: 218 11% 65%;
-		--accent: 215 28% 17%;
-		--accent-foreground: 210 20% 98%;
-		--destructive: 0 63% 31%;
-		--destructive-foreground: 210 20% 98%;
-		--border: 215 28% 17%;
-		--input: 215 28% 17%;
-		--ring: 217 91% 60%;
-
-		--board-bg: #1e222b;
-		--board-border: #333a48;
-		--tile-bg: #2d3342;
-		--tile-border: #444d63;
-		--tile-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+		--border: 215 28% 18%;
 	}
 }
 
@@ -68,6 +26,48 @@ body {
 	margin: 0;
 	padding: 0;
 	-webkit-font-smoothing: antialiased;
+	transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+	background-color: #090d16;
+	color: #f8fafc;
+}
+
+html.dark .bg-slate-50 {
+	background-color: #090d16 !important;
+}
+
+html.dark .bg-white {
+	background-color: #111726 !important;
+	color: #f8fafc !important;
+}
+
+html.dark .bg-slate-100 {
+	background-color: #1a2236 !important;
+	color: #e2e8f0 !important;
+}
+
+html.dark .border-slate-200,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-100 {
+	border-color: #1e293b !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+	color: #f8fafc !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+	color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+	color: #94a3b8 !important;
 }
 
 /* Scrabble Board Grid Styling */

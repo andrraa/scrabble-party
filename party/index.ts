@@ -252,9 +252,10 @@ export default class ScrabbleServer implements Party.Server {
 
 		this.state.players[botId] = botPlayer;
 		this.state.playerOrder.push(botId);
+		this.state.allowDeadlock = true; // Automatically enable tournament mode when playing vs bot
 
 		for (const c of this.party.getConnections()) {
-			this.sendNotification(c, '🤖 ScrabbleBot joined as Player 2!', 'info');
+			this.sendNotification(c, '🤖 ScrabbleBot joined (Tournament Mode on)', 'info');
 		}
 
 		this.broadcastState();
