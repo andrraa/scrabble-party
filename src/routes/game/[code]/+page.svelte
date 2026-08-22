@@ -454,7 +454,7 @@
 
 <svelte:window onclick={handleGlobalClick} />
 
-<main class="min-h-screen lg:h-screen lg:overflow-hidden bg-slate-50 flex flex-col p-1 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
+<main class="min-h-screen {gameState.status === 'PLAYING' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
 	<div class="max-w-6xl w-full mx-auto flex flex-col gap-1.5 sm:gap-2 md:gap-3 flex-1 min-h-0">
 		<!-- Top Bar / Navigation -->
 		<header class="flex items-center justify-between py-1 px-2 shrink-0 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -557,10 +557,10 @@
 			</div>
 		{/if}
 
-		<!-- LOBBY SCREEN -->
+		<!-- LOBBY SCREEN (Scrollable for small screens) -->
 		{#if gameState.status === 'LOBBY'}
-			<div class="flex-1 flex items-center justify-center p-2 sm:p-4 md:p-6">
-				<Card class="w-full max-w-md md:max-w-lg flex flex-col gap-4 md:gap-5 text-center shadow-lg border-slate-200 p-6 md:p-8">
+			<div class="flex-1 flex items-center justify-center py-4 px-2 sm:p-4 md:p-6 w-full overflow-y-auto my-auto">
+				<Card class="w-full max-w-md md:max-w-lg flex flex-col gap-3.5 sm:gap-4 md:gap-5 text-center shadow-lg border-slate-200 p-4 sm:p-6 md:p-8">
 					<div>
 						<Badge variant="indigo" class="mb-1.5">MATCH LOBBY</Badge>
 						<h2 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900">Room {roomCode}</h2>
