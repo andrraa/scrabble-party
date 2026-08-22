@@ -408,14 +408,13 @@ export default class ScrabbleServer implements Party.Server {
 			isFirstMove
 		);
 
-		// 1-Strike Rule: If move is invalid, immediately auto-pass turn to opponent!
+		// 1-Strike Rule: If move is invalid, immediately pass turn to opponent without ending the game!
 		if (!result.valid) {
 			player.invalidAttempts = 0;
-			player.consecutivePasses = (player.consecutivePasses || 0) + 1;
-			this.state.consecutivePasses++;
+			this.state.consecutivePasses = 0; // Reset stalemate counter so game doesn't prematurely end
 
 			this.state.moveHistory.unshift({
-				id: `pass_${Date.now()}`,
+				id: `invalid_${Date.now()}`,
 				playerId: player.id,
 				playerName: player.name,
 				type: 'PASS',
@@ -426,17 +425,12 @@ export default class ScrabbleServer implements Party.Server {
 			for (const c of this.party.getConnections()) {
 				this.sendNotification(
 					c,
-					`❌ ${result.error || 'Langkah tidak valid.'} — Giliran ${player.name} langsung di-pass ke lawan!`,
+					`❌ ${result.error || 'Langkah tidak valid.'} — Giliran ${player.name} di-pass ke lawan!`,
 					'warning'
 				);
 			}
 
-			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-			if (this.state.consecutivePasses >= maxPasses) {
-				this.finishGame(null);
-			} else {
-				this.switchTurn();
-			}
+			this.switchTurn();
 			this.broadcastState();
 			return;
 		}
