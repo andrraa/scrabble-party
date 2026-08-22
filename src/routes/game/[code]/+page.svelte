@@ -27,6 +27,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
 
 	const roomCode = $derived((page.params.code || '').toUpperCase());
 
@@ -59,6 +60,8 @@
 	let showMobileLog = $state(false);
 	let showLeaveDialog = $state(false);
 	let showBagInfo = $state(false);
+	let showNameDialog = $state(false);
+	let tempNewName = $state('');
 
 	// Game state
 	let gameState = $state<GameState>({
@@ -76,6 +79,7 @@
 		lastMoveTime: Date.now(),
 		timerDuration: 90,
 		allowDeadlock: false,
+		draftPlacements: [],
 		turnStartTime: Date.now()
 	});
 
@@ -95,7 +99,6 @@
 	const liveWordPreview = $derived.by(() => {
 		if (pendingPlacements.length === 0) return null;
 
-		// Extract placed letters summary
 		const letters = pendingPlacements.map((p) =>
 			p.tile.isBlank ? (p.tile.assignedLetter || '?') : p.tile.letter
 		);
@@ -283,6 +286,29 @@
 			emote,
 			playerId: currentUserId
 		});
+	}
+
+	function handleOpenNameModal() {
+		tempNewName = currentPlayer?.name || storedPlayerName || '';
+		showNameDialog = true;
+	}
+
+	function handleSaveName() {
+		const clean = tempNewName.trim().slice(0, 20);
+		if (!clean) return;
+		if (socket) {
+			sendSocketMessage(socket, {
+				type: 'CHANGE_NAME',
+				name: clean,
+				playerId: currentUserId
+			});
+		}
+		storedPlayerName = clean;
+		if (typeof window !== 'undefined') {
+			sessionStorage.setItem('scrabble_player_name', clean);
+			localStorage.setItem('scrabble_player_name', clean);
+		}
+		showNameDialog = false;
 	}
 
 	// Mobile & Desktop Tap-to-Place Tile Interaction (Allowed at any time for rearranging)
@@ -493,6 +519,15 @@
 					{isAudioMuted ? '🔇' : '🔊'}
 				</button>
 
+				<!-- Change Name Button -->
+				<button
+					onclick={handleOpenNameModal}
+					class="hidden sm:inline-flex px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+					title="Change your player name"
+				>
+					Name
+				</button>
+
 				<!-- Tile Bag Distribution Reference Button -->
 				{#if gameState.status === 'PLAYING'}
 					<button
@@ -557,7 +592,7 @@
 			</div>
 		{/if}
 
-		<!-- LOBBY SCREEN (Scrollable for small screens) -->
+		<!-- LOBBY SCREEN -->
 		{#if gameState.status === 'LOBBY'}
 			<div class="flex-1 flex items-center justify-center py-4 px-2 sm:p-4 md:p-6 w-full overflow-y-auto my-auto">
 				<Card class="w-full max-w-md md:max-w-lg flex flex-col gap-3.5 sm:gap-4 md:gap-5 text-center shadow-lg border-slate-200 p-4 sm:p-6 md:p-8">
@@ -603,9 +638,9 @@
 					<!-- Deadlock / Stalemate Setting (Configurable by Host in Lobby) -->
 					<div class="flex flex-col gap-1.5 text-left p-3 rounded-xl bg-slate-50 border border-slate-200">
 						<div class="flex items-center justify-between">
-							<span class="text-xs font-semibold text-slate-700">Aturan Deadlock (Stalemate)</span>
+							<span class="text-xs font-semibold text-slate-700">Deadlock Rule (Stalemate)</span>
 							<span class="text-xs font-bold {gameState.allowDeadlock ? 'text-emerald-700' : 'text-slate-500'}">
-								{gameState.allowDeadlock ? 'Aktif' : 'Nonaktif'}
+								{gameState.allowDeadlock ? 'Enabled' : 'Disabled'}
 							</span>
 						</div>
 						{#if isHost}
@@ -617,7 +652,7 @@
 										? 'bg-slate-900 text-white border-slate-900'
 										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
 								>
-									Nonaktif (Bebas Main)
+									Disabled (Casual)
 								</button>
 								<button
 									type="button"
@@ -626,15 +661,15 @@
 										? 'bg-slate-900 text-white border-slate-900'
 										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
 								>
-									Aktif (Turnamen)
+									Enabled (Tournament)
 								</button>
 							</div>
 						{/if}
 						<p class="text-[10px] text-slate-500 leading-relaxed pt-1.5 border-t border-slate-200/60 mt-0.5">
 							{#if gameState.allowDeadlock}
-								<strong class="text-slate-700 font-semibold">Catatan:</strong> Jika Aktif, game otomatis selesai saat kedua pemain melakukan Pass 6x berturut-turut (papan terkunci buntu) dan pemain dengan skor tertinggi langsung dinyatakan menang.
+								<strong class="text-slate-700 font-semibold">Note:</strong> When Enabled, the match ends automatically if both players pass 6 consecutive times (board deadlock), with the highest scoring player declared winner.
 							{:else}
-								<strong class="text-slate-700 font-semibold">Catatan:</strong> Jika Nonaktif, game tidak akan selesai sampai kantong kepingan benar-benar habis atau salah satu pemain menyerah.
+								<strong class="text-slate-700 font-semibold">Note:</strong> When Disabled, the game will never end prematurely and continues until the tile bag is empty or a player resigns.
 							{/if}
 						</p>
 					</div>
@@ -649,14 +684,25 @@
 							{#each [0, 1] as index}
 								{@const pid = gameState.playerOrder[index]}
 								{@const player = pid ? gameState.players[pid] : null}
-								<div class="p-3.5 md:p-4 rounded-xl border flex flex-col items-center justify-center min-h-[70px] md:min-h-[84px] {player ? 'bg-white border-slate-300 shadow-2xs' : 'bg-slate-50 border-dashed border-slate-200'}">
+								<div class="p-3 md:p-3.5 rounded-xl border flex flex-col items-center justify-center min-h-[70px] md:min-h-[84px] relative {player ? 'bg-white border-slate-300 shadow-2xs' : 'bg-slate-50 border-dashed border-slate-200'}">
 									{#if player}
 										<span class="font-bold text-xs sm:text-sm md:text-base text-slate-900 truncate w-full text-center">
 											{player.name} {player.id === currentUserId ? '(You)' : ''}
 										</span>
-										{#if player.isHost}
-											<span class="text-[9px] md:text-[10px] text-amber-700 font-bold uppercase mt-0.5">Host</span>
-										{/if}
+										<div class="flex items-center gap-1.5 mt-0.5">
+											{#if player.isHost}
+												<span class="text-[9px] md:text-[10px] text-amber-700 font-bold uppercase">Host</span>
+											{/if}
+											{#if player.id === currentUserId}
+												<button
+													type="button"
+													onclick={handleOpenNameModal}
+													class="text-[9px] text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
+												>
+													Edit Name
+												</button>
+											{/if}
+										</div>
 									{:else}
 										<span class="text-xs md:text-sm text-slate-400 italic">Waiting...</span>
 									{/if}
@@ -793,6 +839,45 @@
 				</div>
 				<div class="flex-1 overflow-y-auto min-h-[220px] md:min-h-[280px]">
 					<GameLog history={gameState.moveHistory} />
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Change Player Name Dialog -->
+	{#if showNameDialog}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+			onclick={() => (showNameDialog = false)}
+		>
+			<div
+				class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 flex flex-col gap-4"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div>
+					<h3 class="text-lg font-bold text-slate-900">Change Player Name</h3>
+					<p class="text-xs text-slate-500 mt-1">Enter your new display name for this match.</p>
+				</div>
+
+				<div class="flex flex-col gap-1.5">
+					<label for="newName" class="text-xs font-semibold uppercase tracking-wider text-slate-600">New Name</label>
+					<Input
+						id="newName"
+						bind:value={tempNewName}
+						placeholder="Enter your name..."
+						maxlength={20}
+					/>
+				</div>
+
+				<div class="flex items-center justify-end gap-2 pt-2">
+					<Button variant="outline" size="sm" onclick={() => (showNameDialog = false)}>
+						Cancel
+					</Button>
+					<Button variant="default" size="sm" onclick={handleSaveName} disabled={!tempNewName.trim()}>
+						Save Name
+					</Button>
 				</div>
 			</div>
 		</div>

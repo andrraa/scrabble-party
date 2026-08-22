@@ -67,7 +67,7 @@ export default class ScrabbleServer implements Party.Server {
 						if (c.id !== conn.id) {
 							this.sendNotification(
 								c,
-								`⚠️ ${this.state.players[playerId].name} disconnected. Waiting for reconnect...`,
+								`⚠️ ${this.state.players[playerId].name} disconnected`,
 								'warning'
 							);
 						}
@@ -84,7 +84,7 @@ export default class ScrabbleServer implements Party.Server {
 			const data = JSON.parse(message) as ClientMessage;
 			this.handleClientMessage(data, sender);
 		} catch (err: any) {
-			this.sendError(sender, err?.message || 'Invalid message format');
+			this.sendError(sender, err?.message || 'Invalid format');
 		}
 	}
 
@@ -94,6 +94,9 @@ export default class ScrabbleServer implements Party.Server {
 		switch (msg.type) {
 			case 'JOIN':
 				this.handleJoin(msg.name, msg.playerId, conn);
+				break;
+			case 'CHANGE_NAME':
+				this.handleNameChange(msg.name, senderId, conn);
 				break;
 			case 'SET_TIMER':
 				this.handleSetTimer(msg.seconds, senderId, conn);
@@ -142,11 +145,10 @@ export default class ScrabbleServer implements Party.Server {
 			conn.setState({ playerId });
 			this.connPlayerMap.set(conn.id, playerId);
 
-			// If match in progress, inform opponent of reconnect
 			if (this.state.status === 'PLAYING') {
 				for (const c of this.party.getConnections()) {
 					if (c.id !== conn.id) {
-						this.sendNotification(c, `✅ ${cleanName} reconnected to the match!`, 'success');
+						this.sendNotification(c, `✅ ${cleanName} reconnected`, 'success');
 					}
 				}
 			}
@@ -169,7 +171,7 @@ export default class ScrabbleServer implements Party.Server {
 			if (this.state.status === 'PLAYING') {
 				for (const c of this.party.getConnections()) {
 					if (c.id !== conn.id) {
-						this.sendNotification(c, `✅ ${cleanName} reconnected to the match!`, 'success');
+						this.sendNotification(c, `✅ ${cleanName} reconnected`, 'success');
 					}
 				}
 			}
@@ -185,7 +187,6 @@ export default class ScrabbleServer implements Party.Server {
 			playerId = playerId || `p_${Math.random().toString(36).slice(2, 9)}`;
 			const isHost = currentCount === 0;
 
-			// If duplicate name in same room, disambiguate
 			const existingPlayers = Object.values(this.state.players);
 			const nameExists = existingPlayers.some((p) => p.name.toLowerCase() === cleanName.toLowerCase());
 			if (nameExists) {
@@ -208,10 +209,9 @@ export default class ScrabbleServer implements Party.Server {
 			conn.setState({ playerId });
 			this.connPlayerMap.set(conn.id, playerId);
 
-			// Inform other player in lobby
 			for (const c of this.party.getConnections()) {
 				if (c.id !== conn.id) {
-					this.sendNotification(c, `👋 ${cleanName} joined the room!`, 'info');
+					this.sendNotification(c, `👋 ${cleanName} joined`, 'info');
 				}
 			}
 
@@ -223,8 +223,27 @@ export default class ScrabbleServer implements Party.Server {
 			conn.setState({ playerId: spectatorId });
 			this.connPlayerMap.set(conn.id, spectatorId);
 			this.syncSender(conn, spectatorId);
-			this.sendNotification(conn, 'Joined as Spectator (Game is 2-player max)', 'info');
+			this.sendNotification(conn, 'Joined as Spectator', 'info');
 		}
+	}
+
+	handleNameChange(name: string, senderId: string, conn: Party.Connection) {
+		let cleanName = (name || 'Player').trim().slice(0, 20);
+		if (!cleanName || !this.state.players[senderId]) return;
+
+		const otherPlayers = Object.values(this.state.players).filter((p) => p.id !== senderId);
+		if (otherPlayers.some((p) => p.name.toLowerCase() === cleanName.toLowerCase())) {
+			cleanName = `${cleanName} 2`;
+		}
+
+		const oldName = this.state.players[senderId].name;
+		this.state.players[senderId].name = cleanName;
+
+		for (const c of this.party.getConnections()) {
+			this.sendNotification(c, `✏️ ${oldName} is now "${cleanName}"`, 'info');
+		}
+
+		this.broadcastState();
 	}
 
 	handleDraftMove(placements: PlacedTileMove[], senderId: string, conn: Party.Connection) {
@@ -259,7 +278,7 @@ export default class ScrabbleServer implements Party.Server {
 				if (c.id !== conn.id) {
 					this.sendNotification(
 						c,
-						`🚪 ${leavingPlayer.name} has left the match. You won by forfeit!`,
+						`🚪 ${leavingPlayer.name} left. You win by forfeit!`,
 						'success'
 					);
 				}
@@ -277,7 +296,7 @@ export default class ScrabbleServer implements Party.Server {
 
 			for (const c of this.party.getConnections()) {
 				if (c.id !== conn.id) {
-					this.sendNotification(c, `🚪 ${leavingPlayer.name} has left the lobby.`, 'info');
+					this.sendNotification(c, `🚪 ${leavingPlayer.name} left the lobby`, 'info');
 				}
 			}
 		}
@@ -327,7 +346,7 @@ export default class ScrabbleServer implements Party.Server {
 		for (const c of this.party.getConnections()) {
 			this.sendNotification(
 				c,
-				`⏱️ Waktu ${player.name} habis! Giliran otomatis di-pass.`,
+				`⏱️ ${player.name}'s time is up! Turn passed.`,
 				'warning'
 			);
 		}
@@ -364,12 +383,12 @@ export default class ScrabbleServer implements Party.Server {
 	handleStartGame(senderId: string, conn: Party.Connection) {
 		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
 		if (!isHost) {
-			this.sendError(conn, 'Only the host can start the game.');
+			this.sendError(conn, 'Only host can start the game.');
 			return;
 		}
 
 		if (this.state.playerOrder.length < 2) {
-			this.sendError(conn, 'Waiting for Player 2 to join before starting.');
+			this.sendError(conn, 'Waiting for Player 2 to join.');
 			return;
 		}
 
@@ -401,7 +420,7 @@ export default class ScrabbleServer implements Party.Server {
 
 	handlePlayMove(placements: PlacedTileMove[], senderId: string, conn: Party.Connection) {
 		if (this.state.status !== 'PLAYING') {
-			this.sendError(conn, 'Game is not currently active.');
+			this.sendError(conn, 'Game is not active.');
 			return;
 		}
 
@@ -425,7 +444,7 @@ export default class ScrabbleServer implements Party.Server {
 				p.tile.isBlank ? t.isBlank : t.letter === p.tile.letter
 			);
 			if (index === -1) {
-				this.sendError(conn, `You don't have tile "${p.tile.letter}" in your rack.`);
+				this.sendError(conn, `Missing tile "${p.tile.letter}" in rack.`);
 				return;
 			}
 			rackCopy.splice(index, 1);
@@ -439,10 +458,10 @@ export default class ScrabbleServer implements Party.Server {
 			isFirstMove
 		);
 
-		// 1-Strike Rule: If move is invalid, immediately pass turn to opponent without ending the game!
+		// 1-Strike Rule: If move is invalid, immediately pass turn to opponent
 		if (!result.valid) {
 			player.invalidAttempts = 0;
-			this.state.consecutivePasses = 0; // Reset stalemate counter so game doesn't prematurely end
+			this.state.consecutivePasses = 0;
 
 			this.state.moveHistory.unshift({
 				id: `invalid_${Date.now()}`,
@@ -456,7 +475,7 @@ export default class ScrabbleServer implements Party.Server {
 			for (const c of this.party.getConnections()) {
 				this.sendNotification(
 					c,
-					`❌ ${result.error || 'Langkah tidak valid.'} — Giliran ${player.name} di-pass ke lawan!`,
+					`❌ ${result.error || 'Invalid move'} — Turn passed!`,
 					'warning'
 				);
 			}
@@ -513,8 +532,8 @@ export default class ScrabbleServer implements Party.Server {
 
 		// Notify players of the move
 		const successMessage = result.isBingo
-			? `🎉 BINGO! ${player.name} played "${wordsListStr}" for +${result.totalScore} pts!`
-			: `${player.name} played "${wordsListStr}" for +${result.totalScore} pts`;
+			? `🎉 BINGO! ${player.name} played "${wordsListStr}" (+${result.totalScore} pts)`
+			: `${player.name} played "${wordsListStr}" (+${result.totalScore} pts)`;
 
 		for (const c of this.party.getConnections()) {
 			this.sendNotification(c, successMessage, 'success');
@@ -571,7 +590,7 @@ export default class ScrabbleServer implements Party.Server {
 		}
 
 		if (this.state.tileBag.length < 7) {
-			this.sendError(conn, 'Tile bag must have at least 7 tiles to perform a swap.');
+			this.sendError(conn, 'Need ≥7 tiles in bag to swap.');
 			return;
 		}
 
@@ -580,7 +599,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.draftPlacements = [];
 
 		if (!tileIds || tileIds.length === 0 || tileIds.length > player.rack.length) {
-			this.sendError(conn, 'Invalid tile selection for swap.');
+			this.sendError(conn, 'Invalid tile selection.');
 			return;
 		}
 
@@ -597,7 +616,7 @@ export default class ScrabbleServer implements Party.Server {
 		}
 
 		if (tilesToReturn.length !== tileIds.length) {
-			this.sendError(conn, 'Some selected tiles were not found in rack.');
+			this.sendError(conn, 'Selected tiles not found in rack.');
 			return;
 		}
 
@@ -626,7 +645,7 @@ export default class ScrabbleServer implements Party.Server {
 	handleRestartGame(senderId: string, conn: Party.Connection) {
 		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
 		if (!isHost) {
-			this.sendError(conn, 'Only the host can restart the game.');
+			this.sendError(conn, 'Only host can restart the game.');
 			return;
 		}
 		this.handleStartGame(senderId, conn);

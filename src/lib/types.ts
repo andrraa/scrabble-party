@@ -83,6 +83,7 @@ export interface GameState {
 // WebSocket Message Types
 export type ClientMessage =
 	| { type: 'JOIN'; name: string; playerId?: string }
+	| { type: 'CHANGE_NAME'; name: string; playerId?: string }
 	| { type: 'START_GAME'; playerId?: string }
 	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[]; playerId?: string }
 	| { type: 'DRAFT_MOVE'; placements: PlacedTileMove[]; playerId?: string }
