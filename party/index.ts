@@ -14,12 +14,14 @@ import {
 } from '../src/lib/engine/board-constants';
 import { validateAndScoreMove } from '../src/lib/engine/validator';
 import { getDictionary } from './dictionary-loader';
+import { findBestBotMove } from '../src/lib/engine/bot';
 
 export default class ScrabbleServer implements Party.Server {
 	party: Party.Party;
 	state: GameState;
 	dictionary: Set<string>;
 	connPlayerMap: Map<string, string> = new Map();
+	botTimeout: any = null;
 
 	constructor(party: Party.Party) {
 		this.party = party;
@@ -97,6 +99,9 @@ export default class ScrabbleServer implements Party.Server {
 				break;
 			case 'CHANGE_NAME':
 				this.handleNameChange(msg.name, senderId, conn);
+				break;
+			case 'ADD_BOT':
+				this.handleAddBot(senderId, conn);
 				break;
 			case 'SET_TIMER':
 				this.handleSetTimer(msg.seconds, senderId, conn);
@@ -227,6 +232,34 @@ export default class ScrabbleServer implements Party.Server {
 		}
 	}
 
+	handleAddBot(senderId: string, conn: Party.Connection) {
+		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
+		if (!isHost || this.state.status !== 'LOBBY') return;
+		if (this.state.playerOrder.length >= 2) return;
+
+		const botId = 'bot_ai';
+		const botPlayer: Player = {
+			id: botId,
+			name: 'ScrabbleBot 🤖',
+			rack: [],
+			score: 0,
+			isHost: false,
+			isConnected: true,
+			isBot: true,
+			consecutivePasses: 0,
+			invalidAttempts: 0
+		};
+
+		this.state.players[botId] = botPlayer;
+		this.state.playerOrder.push(botId);
+
+		for (const c of this.party.getConnections()) {
+			this.sendNotification(c, '🤖 ScrabbleBot joined as Player 2!', 'info');
+		}
+
+		this.broadcastState();
+	}
+
 	handleNameChange(name: string, senderId: string, conn: Party.Connection) {
 		let cleanName = (name || 'Player').trim().slice(0, 20);
 		if (!cleanName || !this.state.players[senderId]) return;
@@ -322,7 +355,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handleTimerExpired(senderId: string, conn: Party.Connection) {
+	handleTimerExpired(senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.timerDuration === 0) return;
 		if (this.state.turnPlayerId !== senderId && senderId !== '') return;
 
@@ -416,16 +449,17 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.lastMoveTime = Date.now();
 
 		this.broadcastState();
+		this.triggerBotTurnIfActive();
 	}
 
-	handlePlayMove(placements: PlacedTileMove[], senderId: string, conn: Party.Connection) {
+	handlePlayMove(placements: PlacedTileMove[], senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING') {
-			this.sendError(conn, 'Game is not active.');
+			if (conn) this.sendError(conn, 'Game is not active.');
 			return;
 		}
 
 		if (this.state.turnPlayerId !== senderId) {
-			this.sendError(conn, "It's not your turn!");
+			if (conn) this.sendError(conn, "It's not your turn!");
 			return;
 		}
 
@@ -444,7 +478,7 @@ export default class ScrabbleServer implements Party.Server {
 				p.tile.isBlank ? t.isBlank : t.letter === p.tile.letter
 			);
 			if (index === -1) {
-				this.sendError(conn, `Missing tile "${p.tile.letter}" in rack.`);
+				if (conn) this.sendError(conn, `Missing tile "${p.tile.letter}" in rack.`);
 				return;
 			}
 			rackCopy.splice(index, 1);
@@ -549,9 +583,9 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handlePassTurn(senderId: string, conn: Party.Connection) {
+	handlePassTurn(senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
-			this.sendError(conn, 'Cannot pass right now.');
+			if (conn) this.sendError(conn, 'Cannot pass right now.');
 			return;
 		}
 
@@ -583,14 +617,14 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	handleSwapTiles(tileIds: string[], senderId: string, conn: Party.Connection) {
+	handleSwapTiles(tileIds: string[], senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
-			this.sendError(conn, 'Cannot swap tiles right now.');
+			if (conn) this.sendError(conn, 'Cannot swap tiles right now.');
 			return;
 		}
 
 		if (this.state.tileBag.length < 7) {
-			this.sendError(conn, 'Need ≥7 tiles in bag to swap.');
+			if (conn) this.sendError(conn, 'Need ≥7 tiles in bag to swap.');
 			return;
 		}
 
@@ -599,7 +633,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.draftPlacements = [];
 
 		if (!tileIds || tileIds.length === 0 || tileIds.length > player.rack.length) {
-			this.sendError(conn, 'Invalid tile selection.');
+			if (conn) this.sendError(conn, 'Invalid tile selection.');
 			return;
 		}
 
@@ -616,7 +650,7 @@ export default class ScrabbleServer implements Party.Server {
 		}
 
 		if (tilesToReturn.length !== tileIds.length) {
-			this.sendError(conn, 'Selected tiles not found in rack.');
+			if (conn) this.sendError(conn, 'Selected tiles not found in rack.');
 			return;
 		}
 
@@ -651,6 +685,27 @@ export default class ScrabbleServer implements Party.Server {
 		this.handleStartGame(senderId, conn);
 	}
 
+	triggerBotTurnIfActive() {
+		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== 'bot_ai') return;
+
+		if (this.botTimeout) clearTimeout(this.botTimeout);
+		this.botTimeout = setTimeout(() => {
+			if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== 'bot_ai') return;
+
+			const botPlayer = this.state.players['bot_ai'];
+			if (!botPlayer) return;
+
+			const move = findBestBotMove(this.state.board, botPlayer.rack, this.dictionary);
+			if (move.action === 'PLAY' && move.placements && move.placements.length > 0) {
+				this.handlePlayMove(move.placements, 'bot_ai');
+			} else if (move.action === 'SWAP' && move.tileIds && this.state.tileBag.length >= 7) {
+				this.handleSwapTiles(move.tileIds, 'bot_ai');
+			} else {
+				this.handlePassTurn('bot_ai');
+			}
+		}, 1400);
+	}
+
 	switchTurn() {
 		const order = this.state.playerOrder;
 		if (order.length < 2) return;
@@ -664,6 +719,8 @@ export default class ScrabbleServer implements Party.Server {
 		for (const p of Object.values(this.state.players)) {
 			p.invalidAttempts = 0;
 		}
+
+		this.triggerBotTurnIfActive();
 	}
 
 	drawTiles(count: number): ScrabbleTile[] {
@@ -687,6 +744,7 @@ export default class ScrabbleServer implements Party.Server {
 	finishGame(finisherId: string | null) {
 		this.state.status = 'FINISHED';
 		this.state.draftPlacements = [];
+		if (this.botTimeout) clearTimeout(this.botTimeout);
 
 		// Scrabble end-game scoring adjustment
 		if (finisherId) {

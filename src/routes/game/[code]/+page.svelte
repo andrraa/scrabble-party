@@ -221,6 +221,13 @@
 			}
 		);
 
+		// Auto-add bot if opened with bot query param
+		if (page.url.searchParams.get('bot') === '1') {
+			setTimeout(() => {
+				handleAddBot();
+			}, 700);
+		}
+
 		// Mobile background/resume listener
 		visibilityListener = () => {
 			if (document.visibilityState === 'visible' && socket) {
@@ -267,6 +274,14 @@
 		sendSocketMessage(socket, {
 			type: 'SET_DEADLOCK',
 			enabled,
+			playerId: currentUserId
+		});
+	}
+
+	function handleAddBot() {
+		if (!socket || !isHost) return;
+		sendSocketMessage(socket, {
+			type: 'ADD_BOT',
 			playerId: currentUserId
 		});
 	}
@@ -481,7 +496,7 @@
 
 <svelte:window onclick={handleGlobalClick} />
 
-<main class="min-h-screen {gameState.status === 'PLAYING' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
+<main class="min-h-screen {gameState.status !== 'LOBBY' ? 'lg:h-screen lg:overflow-hidden' : 'overflow-y-auto'} bg-slate-50 flex flex-col p-1.5 sm:p-3 md:p-4 lg:px-6 lg:py-3 select-none">
 	<div class="max-w-6xl w-full mx-auto flex flex-col gap-1.5 sm:gap-2 md:gap-3 flex-1 min-h-0">
 		<!-- Top Bar / Navigation -->
 		<header class="flex items-center justify-between py-1 px-2 shrink-0 bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -705,7 +720,18 @@
 											{/if}
 										</div>
 									{:else}
-										<span class="text-xs md:text-sm text-slate-400 italic">Waiting...</span>
+										{#if index === 1 && isHost}
+											<button
+												type="button"
+												onclick={handleAddBot}
+												class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+											>
+												<span>🤖</span>
+												<span>Add AI Bot</span>
+											</button>
+										{:else}
+											<span class="text-xs md:text-sm text-slate-400 italic">Waiting...</span>
+										{/if}
 									{/if}
 								</div>
 							{/each}

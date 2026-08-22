@@ -33,26 +33,19 @@
 		return code;
 	}
 
-	function handleCreateGame() {
-		const trimmedName = playerName.trim();
-		if (!trimmedName) {
-			errorMessage = 'Please enter your name to create a game.';
-			return;
-		}
+	function handleCreateGame(vsBot: boolean = false) {
+		const trimmedName = playerName.trim() || 'Player';
 		errorMessage = '';
 		localStorage.setItem('scrabble_player_name', trimmedName);
 		const code = generateRoomCode();
-		goto(`/game/${code}?name=${encodeURIComponent(trimmedName)}`);
+		const botParam = vsBot ? '&bot=1' : '';
+		goto(`/game/${code}?name=${encodeURIComponent(trimmedName)}${botParam}`);
 	}
 
 	function handleJoinGame() {
-		const trimmedName = playerName.trim();
+		const trimmedName = playerName.trim() || 'Player';
 		const trimmedCode = gameCodeInput.trim().toUpperCase();
 
-		if (!trimmedName) {
-			errorMessage = 'Please enter your name.';
-			return;
-		}
 		if (!trimmedCode || trimmedCode.length < 4) {
 			errorMessage = 'Please enter a valid game code.';
 			return;
@@ -149,18 +142,27 @@
 
 			<!-- Tab Content -->
 			{#if activeTab === 'create'}
-				<div class="flex flex-col gap-4">
+				<div class="flex flex-col gap-3">
 					<p class="text-xs text-slate-500 leading-relaxed">
-						Start a new game session. You will receive a 6-character room code to invite a friend.
+						Start a new game session. Invite a friend or practice solo against the AI bot.
 					</p>
 
 					<Button
 						variant="default"
 						size="lg"
-						onclick={handleCreateGame}
+						onclick={() => handleCreateGame(false)}
 						class="w-full bg-slate-900 hover:bg-slate-800"
 					>
-						Create New Room
+						Create 2-Player Room
+					</Button>
+
+					<Button
+						variant="outline"
+						size="default"
+						onclick={() => handleCreateGame(true)}
+						class="w-full border-slate-300 text-slate-800 hover:bg-slate-50 font-semibold text-xs"
+					>
+						🤖 Play vs AI Bot (Single Player)
 					</Button>
 				</div>
 			{:else}
@@ -200,7 +202,7 @@
 		<div class="flex items-center justify-center gap-3 text-[11px] text-slate-400 font-medium">
 			<span>CSW Dictionary</span>
 			<span>•</span>
-			<span>Anti-Cheat Realtime</span>
+			<span>AI Bot Mode</span>
 			<span>•</span>
 			<span>Responsive</span>
 		</div>

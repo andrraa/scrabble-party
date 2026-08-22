@@ -46,6 +46,7 @@ export interface Player {
 	score: number;
 	isHost: boolean;
 	isConnected: boolean;
+	isBot?: boolean;
 	consecutivePasses: number;
 	invalidAttempts: number;
 }
@@ -85,6 +86,7 @@ export type ClientMessage =
 	| { type: 'JOIN'; name: string; playerId?: string }
 	| { type: 'CHANGE_NAME'; name: string; playerId?: string }
 	| { type: 'START_GAME'; playerId?: string }
+	| { type: 'ADD_BOT'; playerId?: string }
 	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[]; playerId?: string }
 	| { type: 'DRAFT_MOVE'; placements: PlacedTileMove[]; playerId?: string }
 	| { type: 'PASS_TURN'; playerId?: string }
