@@ -42,6 +42,7 @@ export default class ScrabbleServer implements Party.Server {
 			winnerId: null,
 			lastMoveTime: Date.now(),
 			timerDuration: 90, // default 90s, or 0 for off
+			allowDeadlock: false, // default false so casual games never prematurely end
 			turnStartTime: Date.now()
 		};
 	}
@@ -95,6 +96,9 @@ export default class ScrabbleServer implements Party.Server {
 				break;
 			case 'SET_TIMER':
 				this.handleSetTimer(msg.seconds, senderId, conn);
+				break;
+			case 'SET_DEADLOCK':
+				this.handleSetDeadlock(msg.enabled, senderId, conn);
 				break;
 			case 'START_GAME':
 				this.handleStartGame(senderId, conn);
@@ -279,6 +283,15 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
+	handleSetDeadlock(enabled: boolean, senderId: string, conn: Party.Connection) {
+		const isHost = this.state.players[senderId]?.isHost || this.state.playerOrder[0] === senderId;
+		if (!isHost || this.state.status !== 'LOBBY') {
+			return;
+		}
+		this.state.allowDeadlock = Boolean(enabled);
+		this.broadcastState();
+	}
+
 	handleTimerExpired(senderId: string, conn: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.timerDuration === 0) return;
 		if (this.state.turnPlayerId !== senderId && senderId !== '') return;
@@ -307,13 +320,16 @@ export default class ScrabbleServer implements Party.Server {
 			);
 		}
 
-		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-		if (this.state.consecutivePasses >= maxPasses) {
-			this.finishGame(null);
-		} else {
-			this.switchTurn();
+		if (this.state.allowDeadlock) {
+			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+			if (this.state.consecutivePasses >= maxPasses) {
+				this.finishGame(null);
+				this.broadcastState();
+				return;
+			}
 		}
 
+		this.switchTurn();
 		this.broadcastState();
 	}
 
@@ -519,13 +535,16 @@ export default class ScrabbleServer implements Party.Server {
 			timestamp: Date.now()
 		});
 
-		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-		if (this.state.consecutivePasses >= maxPasses) {
-			this.finishGame(null);
-		} else {
-			this.switchTurn();
+		if (this.state.allowDeadlock) {
+			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+			if (this.state.consecutivePasses >= maxPasses) {
+				this.finishGame(null);
+				this.broadcastState();
+				return;
+			}
 		}
 
+		this.switchTurn();
 		this.broadcastState();
 	}
 

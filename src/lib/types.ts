@@ -75,6 +75,7 @@ export interface GameState {
 	winnerId: string | null;
 	lastMoveTime: number;
 	timerDuration: number; // 0 = no timer, or 60, 90, 120, 180 seconds
+	allowDeadlock: boolean; // true = 6x pass ends game, false = no deadlock end
 	turnStartTime: number;
 }
 
@@ -87,6 +88,7 @@ export type ClientMessage =
 	| { type: 'SWAP_TILES'; tileIds: string[]; playerId?: string }
 	| { type: 'RESTART_GAME'; playerId?: string }
 	| { type: 'SET_TIMER'; seconds: number; playerId?: string }
+	| { type: 'SET_DEADLOCK'; enabled: boolean; playerId?: string }
 	| { type: 'SEND_EMOTE'; emote: string; playerId?: string }
 	| { type: 'LEAVE_GAME'; playerId?: string }
 	| { type: 'TIMER_EXPIRED'; playerId?: string };

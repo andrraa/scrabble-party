@@ -75,6 +75,7 @@
 		winnerId: null,
 		lastMoveTime: Date.now(),
 		timerDuration: 90,
+		allowDeadlock: false,
 		turnStartTime: Date.now()
 	});
 
@@ -242,6 +243,15 @@
 		sendSocketMessage(socket, {
 			type: 'SET_TIMER',
 			seconds,
+			playerId: currentUserId
+		});
+	}
+
+	function handleSetDeadlock(enabled: boolean) {
+		if (!socket || !isHost) return;
+		sendSocketMessage(socket, {
+			type: 'SET_DEADLOCK',
+			enabled,
 			playerId: currentUserId
 		});
 	}
@@ -577,6 +587,45 @@
 								{/each}
 							</div>
 						{/if}
+					</div>
+
+					<!-- Deadlock / Stalemate Setting (Configurable by Host in Lobby) -->
+					<div class="flex flex-col gap-1.5 text-left p-3 rounded-xl bg-slate-50 border border-slate-200">
+						<div class="flex items-center justify-between">
+							<span class="text-xs font-semibold text-slate-700">Aturan Deadlock (Stalemate)</span>
+							<span class="text-xs font-bold {gameState.allowDeadlock ? 'text-emerald-700' : 'text-slate-500'}">
+								{gameState.allowDeadlock ? 'Aktif' : 'Nonaktif'}
+							</span>
+						</div>
+						{#if isHost}
+							<div class="grid grid-cols-2 gap-1.5 pt-0.5">
+								<button
+									type="button"
+									onclick={() => handleSetDeadlock(false)}
+									class="py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer {!gameState.allowDeadlock
+										? 'bg-slate-900 text-white border-slate-900'
+										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
+								>
+									Nonaktif (Bebas Main)
+								</button>
+								<button
+									type="button"
+									onclick={() => handleSetDeadlock(true)}
+									class="py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer {gameState.allowDeadlock
+										? 'bg-slate-900 text-white border-slate-900'
+										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
+								>
+									Aktif (Turnamen)
+								</button>
+							</div>
+						{/if}
+						<p class="text-[10px] text-slate-500 leading-relaxed pt-1.5 border-t border-slate-200/60 mt-0.5">
+							{#if gameState.allowDeadlock}
+								<strong class="text-slate-700 font-semibold">Catatan:</strong> Jika Aktif, game otomatis selesai saat kedua pemain melakukan Pass 6x berturut-turut (papan terkunci buntu) dan pemain dengan skor tertinggi langsung dinyatakan menang.
+							{:else}
+								<strong class="text-slate-700 font-semibold">Catatan:</strong> Jika Nonaktif, game tidak akan selesai sampai kantong kepingan benar-benar habis atau salah satu pemain menyerah.
+							{/if}
+						</p>
 					</div>
 
 					<!-- Players in Lobby -->
