@@ -85,7 +85,7 @@
 				newRack[fromIdx] = newRack[index];
 				newRack[index] = temp;
 				onReorderRack(newRack);
-				onSelectTile(null); // Unselect after swapping
+				onSelectTile(null);
 				return;
 			}
 		}
@@ -93,7 +93,7 @@
 	}
 </script>
 
-<div class="flex flex-col items-center gap-1.5 sm:gap-2 w-full max-w-full sm:max-w-[500px] mx-auto">
+<div class="flex flex-col items-center gap-1 sm:gap-1.5 w-full max-w-full sm:max-w-[500px] mx-auto">
 	<!-- Fixed 7-Slot Tile Rack Stand with Drag-to-Reorder / Click-to-Swap -->
 	<div class="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-[#4a3525] rounded-xl shadow-inner border border-[#3b2a1d] w-full items-center justify-items-center min-h-[48px] sm:min-h-[56px] md:min-h-[64px]">
 		{#each Array(7) as _, index}
@@ -125,21 +125,28 @@
 		{/each}
 	</div>
 
-	<!-- Live Word & Score Preview Banner (when tiles are placed) -->
-	{#if hasPending && liveWordPreview}
-		<div class="flex items-center justify-between w-full px-3 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200 text-xs font-semibold animate-in fade-in duration-100">
-			<div class="flex items-center gap-1.5 min-w-0">
-				<span class="text-amber-700">Preview:</span>
-				<span class="font-mono text-amber-950 font-bold truncate">
+	<!-- Fixed-Height Live Preview Sub-row (Constant height: never causes desktop board layout shifts) -->
+	<div class="h-5 w-full flex items-center justify-between px-1.5 text-xs font-semibold overflow-hidden">
+		{#if hasPending && liveWordPreview}
+			<div class="flex items-center gap-1.5 min-w-0 animate-in fade-in duration-100">
+				<span class="text-amber-700 text-[10px] sm:text-xs">Preview:</span>
+				<span class="font-mono text-amber-950 font-bold text-xs truncate">
 					{liveWordPreview.words.join(', ')}
 				</span>
 			</div>
-
-			<div class="flex items-center gap-1 shrink-0 text-amber-900 font-bold">
+			<div class="flex items-center gap-1 shrink-0 text-amber-900 font-bold text-xs animate-in fade-in duration-100">
 				<span>+{liveWordPreview.score} pts</span>
 			</div>
-		</div>
-	{/if}
+		{:else}
+			<div class="text-[10px] sm:text-[11px] text-slate-400 font-normal italic truncate">
+				{#if isTurn}
+					Select tiles to place on board
+				{:else}
+					Waiting for opponent's turn...
+				{/if}
+			</div>
+		{/if}
+	</div>
 
 	<!-- Controls & Actions -->
 	<div class="flex items-center justify-between gap-1 sm:gap-1.5 w-full">

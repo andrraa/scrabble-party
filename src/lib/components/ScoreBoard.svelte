@@ -42,35 +42,33 @@
 	const p2 = $derived(playerOrder[1] ? players[playerOrder[1]] : null);
 
 	let showEmotePicker = $state(false);
+	let secondsRemaining = $state<number | null>(null);
 
-	// Live timer countdown calculation
-	let now = $state(Date.now());
+	// Precise, reactive turn timer countdown
 	$effect(() => {
-		if (status !== 'PLAYING' || timerDuration === 0) return;
-		const interval = setInterval(() => {
-			now = Date.now();
-		}, 400);
+		if (status !== 'PLAYING' || !timerDuration || timerDuration <= 0) {
+			secondsRemaining = null;
+			return;
+		}
+
+		// Track reactive dependencies
+		const start = turnStartTime || Date.now();
+		const duration = timerDuration;
+		const activeTurnId = turnPlayerId;
+
+		const updateCountdown = () => {
+			const elapsed = Math.floor((Date.now() - start) / 1000);
+			const left = Math.max(0, duration - elapsed);
+			secondsRemaining = left;
+
+			if (left === 0 && activeTurnId === currentUserId && onTimerExpired) {
+				onTimerExpired();
+			}
+		};
+
+		updateCountdown();
+		const interval = setInterval(updateCountdown, 400);
 		return () => clearInterval(interval);
-	});
-
-	const secondsLeft = $derived.by(() => {
-		if (timerDuration === 0 || status !== 'PLAYING') return null;
-		const elapsed = Math.floor((now - turnStartTime) / 1000);
-		return Math.max(0, timerDuration - elapsed);
-	});
-
-	let hasExpiredSent = $state(false);
-	$effect(() => {
-		if (turnPlayerId || turnStartTime) {
-			hasExpiredSent = false;
-		}
-	});
-
-	$effect(() => {
-		if (secondsLeft === 0 && status === 'PLAYING' && !hasExpiredSent && turnPlayerId === currentUserId && onTimerExpired) {
-			hasExpiredSent = true;
-			onTimerExpired();
-		}
 	});
 </script>
 
@@ -157,12 +155,12 @@
 				<span>{remainingBagCount} tiles left</span>
 			</div>
 
-			{#if secondsLeft !== null}
-				<div class="flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] sm:text-xs font-bold border transition-colors {secondsLeft <= 15
+			{#if secondsRemaining !== null}
+				<div class="flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[11px] sm:text-xs font-bold border transition-colors {secondsRemaining <= 15
 					? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
 					: 'bg-slate-100 text-slate-700 border-slate-200'}">
 					<span class="text-[10px]">⏱️</span>
-					<span>{Math.floor(secondsLeft / 60)}:{(secondsLeft % 60).toString().padStart(2, '0')}</span>
+					<span>{Math.floor(secondsRemaining / 60)}:{(secondsRemaining % 60).toString().padStart(2, '0')}</span>
 				</div>
 			{/if}
 		</div>
