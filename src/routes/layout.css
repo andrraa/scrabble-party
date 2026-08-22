@@ -8,14 +8,6 @@
 		--card-foreground: 224 71% 4%;
 		--border: 220 13% 88%;
 	}
-
-	.dark {
-		--background: 224 71% 4%;
-		--foreground: 210 20% 98%;
-		--card: 224 71% 7%;
-		--card-foreground: 210 20% 98%;
-		--border: 215 28% 18%;
-	}
 }
 
 body {
@@ -26,48 +18,6 @@ body {
 	margin: 0;
 	padding: 0;
 	-webkit-font-smoothing: antialiased;
-	transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-html.dark body {
-	background-color: #090d16;
-	color: #f8fafc;
-}
-
-html.dark .bg-slate-50 {
-	background-color: #090d16 !important;
-}
-
-html.dark .bg-white {
-	background-color: #111726 !important;
-	color: #f8fafc !important;
-}
-
-html.dark .bg-slate-100 {
-	background-color: #1a2236 !important;
-	color: #e2e8f0 !important;
-}
-
-html.dark .border-slate-200,
-html.dark .border-slate-200\/80,
-html.dark .border-slate-200\/90,
-html.dark .border-slate-100 {
-	border-color: #1e293b !important;
-}
-
-html.dark .text-slate-900,
-html.dark .text-slate-800 {
-	color: #f8fafc !important;
-}
-
-html.dark .text-slate-700,
-html.dark .text-slate-600 {
-	color: #cbd5e1 !important;
-}
-
-html.dark .text-slate-500,
-html.dark .text-slate-400 {
-	color: #94a3b8 !important;
 }
 
 /* Scrabble Board Grid Styling */

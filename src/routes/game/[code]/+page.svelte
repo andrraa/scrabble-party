@@ -34,7 +34,6 @@
 	let currentUserId = $state<string>('');
 	let isConnected = $state(false);
 	let isAudioMuted = $state(false);
-	let isDarkMode = $state(false);
 	let storedPlayerName = $state('Player');
 
 	// Translucent floating toast state
@@ -229,12 +228,6 @@
 				isAudioMuted = true;
 				setMuted(true);
 			}
-
-			const savedTheme = localStorage.getItem('scrabble_theme');
-			if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-				isDarkMode = true;
-				document.documentElement.classList.add('dark');
-			}
 		}
 
 		socket = createGameSocket(
@@ -290,14 +283,6 @@
 		setMuted(isAudioMuted);
 		if (typeof window !== 'undefined') {
 			localStorage.setItem('scrabble_mute', isAudioMuted ? 'true' : 'false');
-		}
-	}
-
-	function toggleDarkMode() {
-		isDarkMode = !isDarkMode;
-		if (typeof document !== 'undefined') {
-			document.documentElement.classList.toggle('dark', isDarkMode);
-			localStorage.setItem('scrabble_theme', isDarkMode ? 'dark' : 'light');
 		}
 	}
 
@@ -565,15 +550,6 @@
 						Connecting...
 					</span>
 				{/if}
-
-				<!-- Dark Mode Toggle Button -->
-				<button
-					onclick={toggleDarkMode}
-					class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition-colors cursor-pointer shrink-0"
-					title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-				>
-					{isDarkMode ? '☀️' : '🌙'}
-				</button>
 
 				<!-- Audio Mute Toggle Button -->
 				<button
