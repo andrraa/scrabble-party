@@ -54,18 +54,36 @@
 				const newRack = [...rack];
 				const [moved] = newRack.splice(fromIdx, 1);
 				if (moved) {
-					newRack.splice(targetIdx, 0, moved);
+					const insertIdx = Math.min(targetIdx, newRack.length);
+					newRack.splice(insertIdx, 0, moved);
 					onReorderRack(newRack);
 				}
 			}
 		}
 		draggedRackIdx = null;
+		onSelectTile(null);
 	}
 
 	function handleRackSlotDragOver(e: DragEvent) {
 		e.preventDefault();
 		if (e.dataTransfer) {
 			e.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleEmptySlotClick(targetIdx: number) {
+		if (selectedTileId && onReorderRack) {
+			const fromIdx = rack.findIndex((t) => t.id === selectedTileId);
+			if (fromIdx !== -1) {
+				const newRack = [...rack];
+				const [moved] = newRack.splice(fromIdx, 1);
+				if (moved) {
+					const insertIdx = Math.min(targetIdx, newRack.length);
+					newRack.splice(insertIdx, 0, moved);
+					onReorderRack(newRack);
+				}
+				onSelectTile(null);
+			}
 		}
 	}
 
@@ -108,6 +126,7 @@
 					<div
 						draggable="true"
 						ondragstart={(e) => handleDragStart(e, tile, index)}
+						ondragend={() => { draggedRackIdx = null; }}
 						class="w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing"
 					>
 						<Tile
@@ -119,7 +138,12 @@
 					</div>
 				{:else}
 					<!-- Empty slot placeholder -->
-					<div class="w-full max-w-[42px] sm:max-w-[48px] md:max-w-[54px] aspect-[4/5] rounded-md border border-[#3b2a1d]/60 bg-[#3a281a]/50"></div>
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="w-full max-w-[42px] sm:max-w-[48px] md:max-w-[54px] aspect-[4/5] rounded-md border border-[#3b2a1d]/60 bg-[#3a281a]/50 cursor-pointer"
+						onclick={() => handleEmptySlotClick(index)}
+					></div>
 				{/if}
 			</div>
 		{/each}

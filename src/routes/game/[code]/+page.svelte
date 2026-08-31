@@ -181,6 +181,8 @@
 				}
 				if (msg.state.turnPlayerId !== currentUserId) {
 					pendingPlacements = [];
+				}
+				if (selectedRackTile && !msg.state.players[msg.yourPlayerId]?.rack.some((t) => t.id === selectedRackTile?.id)) {
 					selectedRackTile = null;
 				}
 				break;
@@ -438,15 +440,26 @@
 		selectedRackTile = null;
 	}
 
+	function handleReorderRack(newRack: ScrabbleTile[]) {
+		if (!currentUserId || !gameState.players[currentUserId]) return;
+		const player = gameState.players[currentUserId];
+		const newIds = new Set(newRack.map((t) => t.id));
+		const notInNewRack = player.rack.filter((t) => !newIds.has(t.id));
+		gameState.players[currentUserId] = {
+			...player,
+			rack: [...newRack, ...notInNewRack]
+		};
+	}
+
 	function handleShuffleRack() {
 		if (!currentPlayer) return;
 		playShuffleSound();
-		const shuffled = [...currentPlayer.rack];
+		const shuffled = [...availableRack];
 		for (let i = shuffled.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
 			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
 		}
-		currentPlayer.rack = shuffled;
+		handleReorderRack(shuffled);
 	}
 
 	function handlePlayWord() {
@@ -827,9 +840,7 @@
 							onOpenSwap={() => (showSwapDialog = true)}
 							onPass={handleTriggerPass}
 							onPlay={handlePlayWord}
-							onReorderRack={(newRack) => {
-								if (currentPlayer) currentPlayer.rack = newRack;
-							}}
+							onReorderRack={handleReorderRack}
 						/>
 					</div>
 				</div>
