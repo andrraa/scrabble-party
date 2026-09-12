@@ -1,4 +1,4 @@
-# 🔠 Scrabble Online — 2-Player Realtime Multiplayer Game
+# 🎮 Scrabble Online — 2-Player Realtime Multiplayer Game
 
 <p align="center">
   <img src="src/lib/assets/favicon.svg" alt="Scrabble Logo" width="96" height="96" />
@@ -9,19 +9,22 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/version-v0.1.0-blue.svg?style=flat-square" alt="Version v0.1.0" />
   <img src="https://img.shields.io/badge/Svelte-5.x_Runes-FF3E00?style=flat-square&logo=svelte&logoColor=white" alt="Svelte 5" />
-  <img src="https://img.shields.io/badge/Realtime-PartyKit_/_Cloudflare-000000?style=flat-square&logo=cloudflare&logoColor=white" alt="PartyKit" />
-  <img src="https://img.shields.io/badge/Styling-Tailwind_CSS_v4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Dictionary-CSW21_(267k_Words)-amber?style=flat-square" alt="CSW Dictionary" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Realtime-PartyKit_/_Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="PartyKit" />
+  <img src="https://img.shields.io/badge/Styling-Tailwind_CSS_v4-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Dictionary-Collins_CSW24_(280k_Words)-amber?style=flat-square" alt="Collins CSW24 Dictionary" />
   <img src="https://img.shields.io/badge/Audio-Web_Audio_API-blue?style=flat-square" alt="Web Audio API" />
+  <img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License MIT" />
 </p>
 
 ---
 
 ## ✨ Fitur Unggulan
 
-### 🎮 Gameplay & Engine Scrabble Lengkap
-- **Kamus Resmi Tournament (CSW / SOWPODS)**: Memuat 267.751 kata valid bahasa Inggris dengan verifikasi instan $O(1)$ in-memory di sisi server.
+### 🎯 Gameplay & Engine Scrabble Lengkap
+- **Kamus Resmi Tournament (Collins CSW24)**: Memuat 280.887 kata valid resmi bahasa Inggris dengan verifikasi instan $O(1)$ in-memory di sisi server.
 - **Validasi Langkah Komprehensif**:
   - Pengecekan garis lurus kontinu (horizontal / vertikal).
   - Validasi langkah pertama wajib menutupi kotak pusat $(7, 7)$.
@@ -33,13 +36,15 @@
   - Bonus **Bingo** ($+50$ poin jika memainkan seluruh 7 keping sekaligus).
 - **Wildcard Blank Tile**: Modal dialog pemilihan huruf A–Z saat meletakkan kepingan kosong.
 - **Tindakan Pemain**: *Play Word*, *Pass Turn*, *Swap Tiles* (tukar keping ke kantong), *Recall Tiles*, dan *Shuffle Rack*.
+- **Pengaturan Rak Kapan Saja**: Fleksibel menukar (*click-to-swap*) atau menggeser (*drag-and-drop*) posisi kepingan di rak sendiri bahkan saat menunggu giliran lawan.
 
 ### ⚡ Realtime & Serverless Architecture (Anti-Cheat)
 - **PartyKit (Cloudflare Workers & Durable Objects)**: Sinkronisasi status ruangan dengan latensi super rendah (*low-latency WebSockets*).
 - **Server Authoritative Anti-Cheat**: Rack kepingan lawan disembunyikan dari inspeksi client dan divalidasi langsung di server.
 - **Resilience Reconnect**: Sesi pemain tersimpan secara otomatis, aman saat *refresh* atau ganti koneksi.
+- **Single Player vs AI Bot**: Mode latihan offline/online melawan bot Scrabble dengan pencarian kata terbaik.
 
-### 🎨 Desain Modern & Responsif (Mobile, Tablet, Desktop)
+### 📱 Desain Modern & Responsif (Mobile, Tablet, Desktop)
 - **Fluid Multi-Device Layout**:
   - **Desktop / Laptop**: Tampilan *Single-Screen View (Zero Scroll)* dengan kartu skor dan riwayat di sidebar kanan.
   - **Tablet**: Tata letak seimbang dengan *touch-target* yang lapang dan nyaman.
@@ -47,7 +52,7 @@
 - **Estimasi Skor Realtime (*Live Word Preview*)**: Menampilkan pratinjau kata yang terbentuk dan estimasi skor sebelum tombol *Play Word* ditekan.
 - **Audio Feedback Realistis (*Web Audio API*)**: Efek suara sintetis ketukan kayu, *shuffle*, *chime* sukses, dan *fanfare* bingo (dilengkapi tombol Mute).
 - **Turn Timer Turnamen**: Pilihan batas waktu giliran (Off, 60s, 90s, 120s, 180s) dengan peringatan *pulse* digital.
-- **Quick Reaction Emotes**: Balon percakapan animasi melayang di atas kartu skor pemain (👏, 🤔, 🔥, 👍, GG).
+- **Quick Reaction Emotes**: Balon percakapan animasi melayang di atas kartu skor pemain (👍, 🔥, 💡, 👏, GG).
 - **Glassmorphism Floating Alert**: Notifikasi transparan modern yang melayang tanpa menggeser elemen tata letak papan.
 
 ---
@@ -59,7 +64,7 @@
 | **Frontend** | [SvelteKit](https://kit.svelte.dev/) (Svelte 5 Runes), TypeScript |
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com/), shadcn-svelte design system |
 | **Realtime Backend** | [PartyKit](https://partykit.io/) (Cloudflare Workers / Durable Objects) |
-| **Dictionary** | Collins Scrabble Words (CSW21 / SOWPODS, 267.751 entri) |
+| **Dictionary** | Collins Scrabble Words (CSW24, 280.887 entri kata) |
 | **Audio** | Native Web Audio API (Synthesized procedurally, zero external assets) |
 
 ---
@@ -71,7 +76,7 @@ scrabble-online/
 ├── party/
 │   ├── index.ts                # Server PartyKit (Room state management, timer, emotes)
 │   ├── dictionary-loader.ts    # O(1) Set-based dictionary loader
-│   └── words-packed.ts         # Bundled CSW21 267k official wordlist
+│   └── words-packed.ts         # Bundled Collins CSW24 280k official wordlist
 ├── src/
 │   ├── lib/
 │   │   ├── audio/
@@ -89,7 +94,8 @@ scrabble-online/
 │   │   │   └── GameOverModal.svelte# Modal hasil akhir pertandingan
 │   │   ├── engine/
 │   │   │   ├── board-constants.ts# Posisi multiplier, nilai huruf, & tile distribution
-│   │   │   └── validator.ts    # Algoritma validasi geometris, sambungan kata, & skor
+│   │   │   ├── validator.ts    # Algoritma validasi geometris, sambungan kata, & skor
+│   │   │   └── bot.ts          # AI Bot Scrabble logic & word finder
 │   │   ├── partykit/
 │   │   │   └── client.ts       # PartySocket client connection wrapper
 │   │   └── types.ts            # Definisi TypeScript GameState, Player, & Messages
@@ -136,47 +142,18 @@ npm run dev
 
 ---
 
-## 🌐 Panduan Deployment 100% Gratis (Free Tier)
+## 🌐 Panduan Deployment (Cloudflare Workers & Pages)
 
-Aplikasi ini dapat di-deploy 100% secara gratis dengan performa global super cepat menggunakan kombinasi **PartyKit Cloud** + **Vercel** / **Cloudflare Pages**.
+Aplikasi ini berjalan cepat di tepi jaringan (*edge*) menggunakan **PartyKit / Cloudflare Workers & Durable Objects**.
 
-### Langkah 1: Deploy Backend Realtime (PartyKit)
-1. Login ke akun PartyKit Anda:
-   ```bash
-   npx partykit login
-   ```
-2. Deploy kode server:
-   ```bash
-   npm run party:deploy
-   ```
-3. Catat URL PartyKit yang diberikan di terminal, misalnya:
-   ```text
-   scrabble-party.<username>.partykit.dev
-   ```
+### Deploy Backend (Cloudflare Worker)
+```bash
+CLOUDFLARE_ACCOUNT_ID="<account_id>" CLOUDFLARE_API_TOKEN="<token>" npx wrangler deploy
+```
 
 ---
 
-### Langkah 2: Deploy Frontend (Vercel / Cloudflare Pages)
-
-#### Opsi A: Vercel (Paling Mudah)
-1. Push repository ke akun GitHub Anda.
-2. Buka [Vercel Dashboard](https://vercel.com) -> Klik **Add New Project** -> Impor repository ini.
-3. Di bagian **Environment Variables**, tambahkan:
-   - **Key**: `PUBLIC_PARTYKIT_HOST`
-   - **Value**: `scrabble-party.<username>.partykit.dev` *(tanpa https://)*
-4. Klik **Deploy**.
-
-#### Opsi B: Cloudflare Pages
-1. Buka [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages**.
-2. Hubungkan ke repository GitHub Anda.
-3. Pilih preset build **SvelteKit** (`npm run build`, output directory `.svelte-kit`).
-4. Di bagian **Environment Variables**, tambahkan:
-   - `PUBLIC_PARTYKIT_HOST` = `scrabble-party.<username>.partykit.dev`
-5. Klik **Save and Deploy**.
-
----
-
-## 📜 Aturan & Perhitungan Poin Scrabble
+## 📖 Aturan & Perhitungan Poin Scrabble
 
 1. **Distribusi Kepingan**: Terdapat total 100 kepingan huruf standar dengan nilai poin dari 0 (Blank) hingga 10 (Q, Z).
 2. **Langkah Pertama**: Wajib terdiri dari minimal 2 huruf dan menutupi kotak bintang pusat `(7, 7)`.
