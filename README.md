@@ -21,148 +21,152 @@
 
 ---
 
-## ✨ Fitur Unggulan
+## ✨ Key Features
 
-### 🎯 Gameplay & Engine Scrabble Lengkap
-- **Kamus Resmi Tournament (Collins CSW24)**: Memuat 280.887 kata valid resmi bahasa Inggris dengan verifikasi instan $O(1)$ in-memory di sisi server.
-- **Validasi Langkah Komprehensif**:
-  - Pengecekan garis lurus kontinu (horizontal / vertikal).
-  - Validasi langkah pertama wajib menutupi kotak pusat $(7, 7)$.
-  - Validasi langkah lanjutan wajib terhubung dengan kepingan lama di papan.
-  - Ekstraksi otomatis kata utama dan seluruh kata silang (*cross-words*).
-- **Sistem Skor Otomatis**:
-  - Multiplier huruf (`DL` $\times 2$, `TL` $\times 3$).
-  - Multiplier kata (`DW` $\times 2$, `TW` $\times 3$, `Center Star` $\times 2$).
-  - Bonus **Bingo** ($+50$ poin jika memainkan seluruh 7 keping sekaligus).
-- **Wildcard Blank Tile**: Modal dialog pemilihan huruf A–Z saat meletakkan kepingan kosong.
-- **Tindakan Pemain**: *Play Word*, *Pass Turn*, *Swap Tiles* (tukar keping ke kantong), *Recall Tiles*, dan *Shuffle Rack*.
-- **Pengaturan Rak Kapan Saja**: Fleksibel menukar (*click-to-swap*) atau menggeser (*drag-and-drop*) posisi kepingan di rak sendiri bahkan saat menunggu giliran lawan.
+### 🎯 Complete Scrabble Engine & Gameplay
+- **Official Tournament Lexicon (Collins CSW24)**: Packed with 280,887 official English words verified with instant $O(1)$ in-memory server lookups.
+- **Comprehensive Move Validation**:
+  - Continuous straight-line checks (horizontal or vertical).
+  - First-move validation: must cover the center star $(7, 7)$.
+  - Subsequent move validation: must connect with existing board tiles.
+  - Automatic extraction of main words and all concurrent cross-words.
+- **Automatic Scoring System**:
+  - Letter multipliers (`DL` $\times 2$, `TL` $\times 3$).
+  - Word multipliers (`DW` $\times 2$, `TW` $\times 3$, `Center Star` $\times 2$).
+  - **Bingo** bonus ($+50$ points for playing all 7 rack tiles in a single turn).
+- **Wildcard Blank Tile**: Modal dialog to pick letters A–Z when placing blank tiles.
+- **Full Player Actions**: *Play Word*, *Pass Turn*, *Swap Tiles* (exchange with bag), *Recall Tiles*, and *Shuffle Rack*.
+- **Flexible Rack Organization**: Drag-and-drop or click-to-swap tiles on your rack at any time, even during your opponent's turn.
 
 ### ⚡ Realtime & Serverless Architecture (Anti-Cheat)
-- **PartyKit (Cloudflare Workers & Durable Objects)**: Sinkronisasi status ruangan dengan latensi super rendah (*low-latency WebSockets*).
-- **Server Authoritative Anti-Cheat**: Rack kepingan lawan disembunyikan dari inspeksi client dan divalidasi langsung di server.
-- **Resilience Reconnect**: Sesi pemain tersimpan secara otomatis, aman saat *refresh* atau ganti koneksi.
-- **Single Player vs AI Bot**: Mode latihan offline/online melawan bot Scrabble dengan pencarian kata terbaik.
+- **PartyKit (Cloudflare Workers & Durable Objects)**: Low-latency room state synchronization over WebSockets.
+- **Server-Authoritative Anti-Cheat**: Opponent rack tiles are masked server-side (`?`) to prevent client-side inspection.
+- **Seamless Reconnection**: Automatic player session recovery across browser refreshes or network drops.
+- **Single-Player vs AI Bot**: Solo practice mode with an AI engine that finds high-scoring valid moves.
 
-### 📱 Desain Modern & Responsif (Mobile, Tablet, Desktop)
+### 📱 Modern & Responsive Design (Mobile, Tablet, Desktop)
 - **Fluid Multi-Device Layout**:
-  - **Desktop / Laptop**: Tampilan *Single-Screen View (Zero Scroll)* dengan kartu skor dan riwayat di sidebar kanan.
-  - **Tablet**: Tata letak seimbang dengan *touch-target* yang lapang dan nyaman.
-  - **Mobile Smartphone**: Papan 15x15 *full-bleed* tanpa koordinat yang memakan tempat, kepingan rak *fixed 7-slot* bebas scroll horizontal, dan drawer log riwayat.
-- **Estimasi Skor Realtime (*Live Word Preview*)**: Menampilkan pratinjau kata yang terbentuk dan estimasi skor sebelum tombol *Play Word* ditekan.
-- **Audio Feedback Realistis (*Web Audio API*)**: Efek suara sintetis ketukan kayu, *shuffle*, *chime* sukses, dan *fanfare* bingo (dilengkapi tombol Mute).
-- **Turn Timer Turnamen**: Pilihan batas waktu giliran (Off, 60s, 90s, 120s, 180s) dengan peringatan *pulse* digital.
-- **Quick Reaction Emotes**: Balon percakapan animasi melayang di atas kartu skor pemain (👍, 🔥, 💡, 👏, GG).
-- **Glassmorphism Floating Alert**: Notifikasi transparan modern yang melayang tanpa menggeser elemen tata letak papan.
+  - **Desktop / Laptop**: Single-screen view (zero scroll) with scoreboard, unseen tile tracker, and history sidebar.
+  - **Tablet**: Balanced layout with comfortable touch targets.
+  - **Mobile Smartphone**: Full-bleed 15x15 board, fixed 7-slot tile rack without horizontal scrolling, and slide-over move history drawer.
+- **Realtime Score & Word Preview**: Instant live preview of formed words and estimated scores before submitting moves.
+- **Procedural Sound Effects (Web Audio API)**: Synthesized wooden tile clacks, shuffles, success chimes, and bingo fanfare (includes mute toggle).
+- **Tournament Turn Timer**: Configurable turn deadlines (Off, 60s, 90s, 120s, 180s) with digital pulse countdown warnings.
+- **Quick Reaction Emotes**: Floating speech-bubble animations above player score cards (👍, 🔥, 💡, 👏, GG).
+- **Glassmorphic Floating Alerts**: Unobtrusive floating toasts that keep the board layout stable.
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |---|---|
 | **Frontend** | [SvelteKit](https://kit.svelte.dev/) (Svelte 5 Runes), TypeScript |
-| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/), shadcn-svelte design system |
+| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/), shadcn-svelte inspired UI |
 | **Realtime Backend** | [PartyKit](https://partykit.io/) (Cloudflare Workers / Durable Objects) |
-| **Dictionary** | Collins Scrabble Words (CSW24, 280.887 entri kata) |
-| **Audio** | Native Web Audio API (Synthesized procedurally, zero external assets) |
+| **Dictionary** | Collins Scrabble Words (CSW24, 280,887 entries) |
+| **Audio** | Native Web Audio API (procedural synthesis, 0 external assets) |
 
 ---
 
-## 📁 Struktur Direktori
+## 📁 Project Structure
 
 ```text
 scrabble-online/
 ├── party/
-│   ├── index.ts                # Server PartyKit (Room state management, timer, emotes)
+│   ├── index.ts                # PartyKit server (Room state management, timer, moves, emotes)
 │   ├── dictionary-loader.ts    # O(1) Set-based dictionary loader
-│   └── words-packed.ts         # Bundled Collins CSW24 280k official wordlist
+│   └── words-packed.ts         # Bundled Collins CSW24 280k wordlist
 ├── src/
 │   ├── lib/
 │   │   ├── audio/
 │   │   │   └── sound-effects.ts# Procedural Web Audio API sound synthesizer
 │   │   ├── components/
-│   │   │   ├── ui/             # Shadcn-style components (Button, Card, Badge, Input)
-│   │   │   ├── Board.svelte    # Papan Scrabble 15x15 clean grid
-│   │   │   ├── Cell.svelte     # Kotak sel multiplier (TW, DW, TL, DL, Center)
-│   │   │   ├── Tile.svelte     # Kepingan kayu ivory dengan subscript poin
-│   │   │   ├── Rack.svelte     # Rak 7 slot, live preview, aksi, & emotes
-│   │   │   ├── ScoreBoard.svelte# Papan skor, turn countdown timer, & emote bubble
-│   │   │   ├── GameLog.svelte  # Riwayat perolehan kata turn-by-turn
-│   │   │   ├── BlankDialog.svelte # Modal pemilihan huruf wildcard
-│   │   │   ├── SwapDialog.svelte  # Modal penukaran keping ke kantong
-│   │   │   └── GameOverModal.svelte# Modal hasil akhir pertandingan
+│   │   │   ├── ui/             # Reusable UI primitives (Button, Card, Badge, Input)
+│   │   │   ├── Board.svelte    # Scrabble 15x15 board grid
+│   │   │   ├── Cell.svelte     # Multiplier cells (TW, DW, TL, DL, Center)
+│   │   │   ├── Tile.svelte     # Ivory wooden tiles with subscript point values
+│   │   │   ├── Rack.svelte     # 7-slot rack stand, live preview, action buttons
+│   │   │   ├── ScoreBoard.svelte# Player score cards, countdown timer, & emote display
+│   │   │   ├── GameLog.svelte  # Turn-by-turn move history log
+│   │   │   ├── BlankDialog.svelte # Wildcard letter selection dialog
+│   │   │   ├── SwapDialog.svelte  # Bag tile swap dialog
+│   │   │   └── GameOverModal.svelte# Final match result modal
 │   │   ├── engine/
-│   │   │   ├── board-constants.ts# Posisi multiplier, nilai huruf, & tile distribution
-│   │   │   ├── validator.ts    # Algoritma validasi geometris, sambungan kata, & skor
-│   │   │   └── bot.ts          # AI Bot Scrabble logic & word finder
+│   │   │   ├── board-constants.ts# Multiplier coordinates, letter distribution, & values
+│   │   │   ├── validator.ts    # Geometry validation, word adjacency, and scoring engine
+│   │   │   └── bot.ts          # AI Bot Scrabble solver & move selector
 │   │   ├── partykit/
 │   │   │   └── client.ts       # PartySocket client connection wrapper
-│   │   └── types.ts            # Definisi TypeScript GameState, Player, & Messages
+│   │   └── types.ts            # TypeScript definitions for GameState, Player, & Messages
 │   └── routes/
 │       ├── +layout.svelte      # Root layout & Favicon
-│       ├── +page.svelte        # Halaman awal (Lobby create/join, loading splash)
+│       ├── +page.svelte        # Lobby page (Create/Join room, Solo AI Bot match)
 │       └── game/[code]/
-│           └── +page.svelte    # Arena permainan Scrabble
-├── partykit.json               # Konfigurasi PartyKit
+│           └── +page.svelte    # Main Scrabble game view
+├── partykit.json               # PartyKit configuration
 ├── package.json
 └── README.md
 ```
 
 ---
 
-## 🚀 Panduan Menjalankan Lokal (Development)
+## 🚀 Getting Started (Local Development)
 
-### Prasyarat
-- Node.js versi 18+ (Disarankan v20+)
+### Prerequisites
+- Node.js 18+ (Node 20+ recommended)
 - npm / pnpm / yarn
 
 ### 1. Clone & Install Dependencies
 ```bash
-git clone <URL_REPOSITORY>
-cd scrabble-online
+git clone https://github.com/andrraa/scrabble-party.git
+cd scrabble-party
 npm install
 ```
 
-### 2. Jalankan PartyKit Server (Backend WebSocket)
-Di Terminal 1:
+### 2. Start PartyKit WebSocket Server
+In Terminal 1:
 ```bash
 npm run dev:party
-# Server PartyKit aktif di http://localhost:1999
+# PartyKit server runs on http://localhost:1999
 ```
 
-### 3. Jalankan Frontend SvelteKit
-Di Terminal 2:
+### 3. Start SvelteKit Frontend
+In Terminal 2:
 ```bash
 npm run dev
-# Buka http://localhost:5173 di browser
+# Open http://localhost:5173 in your browser
 ```
 
-> **Tips Uji Coba**: Buka `http://localhost:5173` pada dua tab atau browser berbeda. Buat game di tab 1 (Host), lalu salin Room Code dan bergabunglah di tab 2 (Player 2).
+> **Testing Multi-player**: Open `http://localhost:5173` in two separate browser tabs or windows. Create a match in tab 1 (Host), copy the Room Code, and join from tab 2 (Player 2).
 
 ---
 
-## 🌐 Panduan Deployment (Cloudflare Workers & Pages)
+## 🌐 Deployment (Cloudflare Workers & Pages)
 
-Aplikasi ini berjalan cepat di tepi jaringan (*edge*) menggunakan **PartyKit / Cloudflare Workers & Durable Objects**.
+The game runs at the edge using **PartyKit on Cloudflare Workers & Durable Objects**.
 
 ### Deploy Backend (Cloudflare Worker)
 ```bash
 CLOUDFLARE_ACCOUNT_ID="<account_id>" CLOUDFLARE_API_TOKEN="<token>" npx wrangler deploy
 ```
 
+### Deploy Frontend (Vercel / Cloudflare Pages)
+Add environment variable:
+- `PUBLIC_PARTYKIT_HOST` = `<your-worker-or-partykit-domain>`
+
 ---
 
-## 📖 Aturan & Perhitungan Poin Scrabble
+## 📖 Scrabble Rules & Scoring Reference
 
-1. **Distribusi Kepingan**: Terdapat total 100 kepingan huruf standar dengan nilai poin dari 0 (Blank) hingga 10 (Q, Z).
-2. **Langkah Pertama**: Wajib terdiri dari minimal 2 huruf dan menutupi kotak bintang pusat `(7, 7)`.
-3. **Multiplier Papan**:
-   - `DL` (Double Letter): Nilai huruf baru dikalikan 2.
-   - `TL` (Triple Letter): Nilai huruf baru dikalikan 3.
-   - `DW` (Double Word): Nilai total kata baru dikalikan 2.
-   - `TW` (Triple Word): Nilai total kata baru dikalikan 3.
-4. **Bingo**: Pemain yang berhasil memainkan ketujuh (7) keping di raknya dalam satu langkah mendapatkan tambahan bonus $+50$ poin!
+1. **Tile Distribution**: 100 standard tiles with point values ranging from 0 (Blank) to 10 (Q, Z).
+2. **First Move**: Must consist of 2 or more letters and cross the center star `(7, 7)`.
+3. **Board Multipliers**:
+   - `DL` (Double Letter): Multiplies the value of that newly placed tile by 2.
+   - `TL` (Triple Letter): Multiplies the value of that newly placed tile by 3.
+   - `DW` (Double Word): Multiplies the total score of the newly formed word by 2.
+   - `TW` (Triple Word): Multiplies the total score of the newly formed word by 3.
+4. **Bingo Bonus**: Playing all 7 tiles from your rack in a single turn awards a $+50$ point bonus!
 
 ---
 
