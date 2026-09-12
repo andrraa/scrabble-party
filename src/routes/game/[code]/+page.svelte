@@ -314,8 +314,13 @@
 		});
 	}
 
+	let lastExpiredTurnStart = $state<number>(0);
+
 	function handleTimerExpired() {
-		if (!socket || gameState.status !== 'PLAYING') return;
+		if (!socket || gameState.status !== 'PLAYING' || gameState.timerDuration <= 0) return;
+		if (lastExpiredTurnStart === gameState.turnStartTime) return;
+		lastExpiredTurnStart = gameState.turnStartTime;
+
 		handleRecallAll();
 		sendSocketMessage(socket, {
 			type: 'TIMER_EXPIRED',

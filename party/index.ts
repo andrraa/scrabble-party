@@ -22,6 +22,7 @@ export default class ScrabbleServer implements Party.Server {
 	dictionary: Set<string>;
 	connPlayerMap: Map<string, string> = new Map();
 	botTimeout: any = null;
+	turnTimeout: any = null;
 
 	constructor(party: Party.Party) {
 		this.party = party;
@@ -299,6 +300,7 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.status = 'FINISHED';
 			this.state.winnerId = otherPlayerId || null;
 			this.state.draftPlacements = [];
+			this.clearTurnTimer();
 
 			this.state.moveHistory.unshift({
 				id: `leave_${Date.now()}`,
@@ -357,9 +359,43 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
+	clearTurnTimer() {
+		if (this.turnTimeout) {
+			clearTimeout(this.turnTimeout);
+			this.turnTimeout = null;
+		}
+	}
+
+	resetTurnTimer() {
+		this.clearTurnTimer();
+		if (this.state.status !== 'PLAYING' || this.state.timerDuration <= 0) return;
+
+		const currentTurnId = this.state.turnPlayerId;
+		const currentTurnStart = this.state.turnStartTime;
+
+		this.turnTimeout = setTimeout(() => {
+			if (
+				this.state.status === 'PLAYING' &&
+				this.state.turnPlayerId === currentTurnId &&
+				this.state.turnStartTime === currentTurnStart
+			) {
+				this.handleTimerExpired('');
+			}
+		}, this.state.timerDuration * 1000);
+	}
+
 	handleTimerExpired(senderId: string, conn?: Party.Connection) {
-		if (this.state.status !== 'PLAYING' || this.state.timerDuration === 0) return;
-		if (this.state.turnPlayerId !== senderId && senderId !== '') return;
+		if (this.state.status !== 'PLAYING' || this.state.timerDuration <= 0) return;
+
+		// If triggered by a client message, strictly verify that the turn duration has elapsed
+		if (senderId !== '') {
+			const elapsed = Date.now() - this.state.turnStartTime;
+			if (elapsed < this.state.timerDuration * 1000 - 800) {
+				return;
+			}
+		}
+
+		this.clearTurnTimer();
 
 		const player = this.state.players[this.state.turnPlayerId];
 		if (!player) return;
@@ -450,6 +486,7 @@ export default class ScrabbleServer implements Party.Server {
 		this.state.turnStartTime = Date.now();
 		this.state.lastMoveTime = Date.now();
 
+		this.resetTurnTimer();
 		this.broadcastState();
 		this.triggerBotTurnIfActive();
 	}
@@ -722,6 +759,7 @@ export default class ScrabbleServer implements Party.Server {
 			p.invalidAttempts = 0;
 		}
 
+		this.resetTurnTimer();
 		this.triggerBotTurnIfActive();
 	}
 
@@ -746,6 +784,7 @@ export default class ScrabbleServer implements Party.Server {
 	finishGame(finisherId: string | null) {
 		this.state.status = 'FINISHED';
 		this.state.draftPlacements = [];
+		this.clearTurnTimer();
 		if (this.botTimeout) clearTimeout(this.botTimeout);
 
 		// Scrabble end-game scoring adjustment

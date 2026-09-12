@@ -56,18 +56,21 @@
 		const duration = timerDuration;
 		const activeTurnId = turnPlayerId;
 
+		let hasFired = false;
+
 		const updateCountdown = () => {
 			const elapsed = Math.floor((Date.now() - start) / 1000);
 			const left = Math.max(0, duration - elapsed);
 			secondsRemaining = left;
 
-			if (left === 0 && activeTurnId === currentUserId && onTimerExpired) {
+			if (left === 0 && !hasFired && onTimerExpired) {
+				hasFired = true;
 				onTimerExpired();
 			}
 		};
 
 		updateCountdown();
-		const interval = setInterval(updateCountdown, 400);
+		const interval = setInterval(updateCountdown, 250);
 		return () => clearInterval(interval);
 	});
 </script>
