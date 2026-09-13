@@ -60,6 +60,8 @@
 									</span>
 								{/each}
 							</div>
+						{:else if item.type === 'CHALLENGE_PENALTY'}
+							<span class="text-[11px] text-rose-600 font-medium">Failed Challenge Penalty</span>
 						{:else if item.type === 'PASS'}
 							<span class="text-[11px] text-slate-400 italic">Passed turn</span>
 						{:else if item.type === 'SWAP'}
@@ -71,6 +73,10 @@
 						{#if item.totalScore > 0}
 							<span class="font-bold text-slate-900 text-sm tabular-nums">
 								+{item.totalScore}
+							</span>
+						{:else if item.totalScore < 0}
+							<span class="font-bold text-rose-600 text-sm tabular-nums">
+								{item.totalScore}
 							</span>
 						{:else}
 							<span class="font-medium text-slate-400 text-xs">-</span>

@@ -55,7 +55,7 @@ export interface MoveHistoryItem {
 	id: string;
 	playerId: string;
 	playerName: string;
-	type: 'PLAY' | 'PASS' | 'SWAP';
+	type: 'PLAY' | 'PASS' | 'SWAP' | 'CHALLENGE_PENALTY';
 	words?: { word: string; score: number }[];
 	totalScore: number;
 	swappedCount?: number;

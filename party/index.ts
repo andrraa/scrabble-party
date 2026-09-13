@@ -785,6 +785,14 @@ export default class ScrabbleServer implements Party.Server {
 			// Challenger loses 5 points
 			if (challenger) {
 				challenger.score = Math.max(0, challenger.score - 5);
+				this.state.moveHistory.unshift({
+					id: `penalty_${Date.now()}`,
+					playerId: challenger.id,
+					playerName: challenger.name,
+					type: 'CHALLENGE_PENALTY',
+					totalScore: -5,
+					timestamp: Date.now()
+				});
 			}
 
 			const wordsListStr = challenge.words.map((w) => w.word).join(', ');
