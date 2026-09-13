@@ -82,7 +82,8 @@
 		timerDuration: 90,
 		allowDeadlock: true,
 		draftPlacements: [],
-		turnStartTime: Date.now()
+		turnStartTime: Date.now(),
+		pendingChallenge: null
 	});
 
 	const currentPlayer = $derived(currentUserId ? gameState.players[currentUserId] : null);
@@ -175,13 +176,14 @@
 				}
 
 				gameState = msg.state;
-				currentUserId = msg.yourPlayerId;
+				if (msg.yourPlayerId) {
+					currentUserId = msg.yourPlayerId;
+				}
 				if (msg.state.status === 'FINISHED') {
 					showGameOverModal = true;
 				}
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
-					localStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
 				}
 				if (msg.state.turnPlayerId !== currentUserId) {
 					pendingPlacements = [];
@@ -242,7 +244,7 @@
 			() => {
 				isConnected = true;
 				if (socket) {
-					const activePid = currentUserId || (typeof window !== 'undefined' ? sessionStorage.getItem(`scrabble_pid_${roomCode}`) || localStorage.getItem(`scrabble_pid_${roomCode}`) : '') || undefined;
+					const activePid = currentUserId || (typeof window !== 'undefined' ? sessionStorage.getItem(`scrabble_pid_${roomCode}`) : '') || undefined;
 					sendSocketMessage(socket, {
 						type: 'JOIN',
 						name: storedPlayerName,
@@ -263,7 +265,7 @@
 
 		visibilityListener = () => {
 			if (document.visibilityState === 'visible' && socket) {
-				const activePid = currentUserId || sessionStorage.getItem(`scrabble_pid_${roomCode}`) || localStorage.getItem(`scrabble_pid_${roomCode}`) || undefined;
+				const activePid = currentUserId || sessionStorage.getItem(`scrabble_pid_${roomCode}`) || undefined;
 				sendSocketMessage(socket, {
 					type: 'JOIN',
 					name: storedPlayerName,
@@ -545,7 +547,6 @@
 		}
 		if (typeof window !== 'undefined') {
 			sessionStorage.removeItem(`scrabble_pid_${roomCode}`);
-			localStorage.removeItem(`scrabble_pid_${roomCode}`);
 		}
 		if (socket) {
 			socket.close();
@@ -1097,7 +1098,7 @@
 	<ChallengeDialog
 		isOpen={Boolean(gameState.pendingChallenge)}
 		pendingChallenge={gameState.pendingChallenge || null}
-		isChallenger={gameState.pendingChallenge?.challengerId === currentUserId}
+		isChallenger={Boolean(gameState.pendingChallenge && gameState.pendingChallenge.playerId !== currentUserId)}
 		onAccept={handleAcceptChallenge}
 		onChallenge={handleChallengePlay}
 	/>

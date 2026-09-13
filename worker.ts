@@ -21,7 +21,7 @@ export class ScrabbleDurableObject implements DurableObject {
 				for (const [ws, data] of this.connections.entries()) {
 					conns.push(this.wrapConnection(ws, data));
 				}
-				return conns.values();
+				return conns;
 			},
 			getConnection: (id: string) => {
 				for (const [ws, data] of this.connections.entries()) {
@@ -30,17 +30,14 @@ export class ScrabbleDurableObject implements DurableObject {
 				return undefined;
 			},
 			broadcast: (msg: string, without?: string[]) => {
-				// Persist state asynchronously on broadcast
-				this.persistState();
 				for (const [ws, data] of this.connections.entries()) {
 					if (!without || !without.includes(data.id)) {
 						try {
-							if (ws.readyState === WebSocket.OPEN) {
-								ws.send(msg);
-							}
+							ws.send(msg);
 						} catch (e) {}
 					}
 				}
+				this.persistState();
 			},
 			context: {} as any
 		};
@@ -86,9 +83,7 @@ export class ScrabbleDurableObject implements DurableObject {
 			},
 			send: (msg: string) => {
 				try {
-					if (ws.readyState === WebSocket.OPEN) {
-						ws.send(msg);
-					}
+					ws.send(msg);
 				} catch (e) {}
 			},
 			close: () => {

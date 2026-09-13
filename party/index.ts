@@ -1041,6 +1041,8 @@ export default class ScrabbleServer implements Party.Server {
 	}
 
 	syncSender(conn: Party.Connection, forPlayerId: string) {
+		const targetPlayerId = forPlayerId || (conn.state?.playerId as string) || this.connPlayerMap.get(conn.id) || '';
+
 		// Clone state to sanitize opponent's secret rack tiles
 		const sanitizedState: GameState = {
 			...this.state,
@@ -1051,7 +1053,7 @@ export default class ScrabbleServer implements Party.Server {
 		for (const [pid, player] of Object.entries(this.state.players)) {
 			sanitizedState.players[pid] = {
 				...player,
-				rack: pid === forPlayerId
+				rack: pid === targetPlayerId
 					? player.rack
 					: player.rack.map((t) => ({ id: t.id, letter: '?', value: 0 }))
 			};
@@ -1060,7 +1062,7 @@ export default class ScrabbleServer implements Party.Server {
 		const msg: ServerMessage = {
 			type: 'SYNC_STATE',
 			state: sanitizedState,
-			yourPlayerId: forPlayerId
+			yourPlayerId: targetPlayerId
 		};
 
 		conn.send(JSON.stringify(msg));
