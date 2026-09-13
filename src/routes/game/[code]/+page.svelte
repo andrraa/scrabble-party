@@ -79,7 +79,7 @@
 		winnerId: null,
 		lastMoveTime: Date.now(),
 		timerDuration: 90,
-		allowDeadlock: false,
+		allowDeadlock: true,
 		draftPlacements: [],
 		turnStartTime: Date.now()
 	});
@@ -175,6 +175,9 @@
 
 				gameState = msg.state;
 				currentUserId = msg.yourPlayerId;
+				if (msg.state.status === 'FINISHED') {
+					showGameOverModal = true;
+				}
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
 					localStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);

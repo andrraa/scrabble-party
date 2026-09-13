@@ -45,7 +45,7 @@ export default class ScrabbleServer implements Party.Server {
 			winnerId: null,
 			lastMoveTime: Date.now(),
 			timerDuration: 90, // default 90s, or 0 for off
-			allowDeadlock: false, // default false
+			allowDeadlock: true, // default true (Tournament Stalemate)
 			draftPlacements: [], // live realtime preview of opponent drafting
 			turnStartTime: Date.now()
 		};
@@ -359,6 +359,20 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
+	checkDeadlock(player: ScrabblePlayer): boolean {
+		if (!this.state.allowDeadlock) return false;
+		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
+		if (this.state.consecutivePasses >= maxPasses || player.consecutivePasses >= 3) {
+			for (const c of this.party.getConnections()) {
+				this.sendNotification(c, '🏁 Match ended due to consecutive passes (Tournament Stalemate)!', 'info');
+			}
+			this.finishGame(null);
+			this.broadcastState();
+			return true;
+		}
+		return false;
+	}
+
 	clearTurnTimer() {
 		if (this.turnTimeout) {
 			clearTimeout(this.turnTimeout);
@@ -422,13 +436,8 @@ export default class ScrabbleServer implements Party.Server {
 			);
 		}
 
-		if (this.state.allowDeadlock) {
-			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-			if (this.state.consecutivePasses >= maxPasses) {
-				this.finishGame(null);
-				this.broadcastState();
-				return;
-			}
+		if (this.checkDeadlock(player)) {
+			return;
 		}
 
 		this.switchTurn();
@@ -534,7 +543,8 @@ export default class ScrabbleServer implements Party.Server {
 		// 1-Strike Rule: If move is invalid, immediately pass turn to opponent
 		if (!result.valid) {
 			player.invalidAttempts = 0;
-			this.state.consecutivePasses = 0;
+			player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+			this.state.consecutivePasses++;
 
 			this.state.moveHistory.unshift({
 				id: `invalid_${Date.now()}`,
@@ -551,6 +561,10 @@ export default class ScrabbleServer implements Party.Server {
 					`❌ ${result.error || 'Invalid move'} — Turn passed!`,
 					'warning'
 				);
+			}
+
+			if (this.checkDeadlock(player)) {
+				return;
 			}
 
 			this.switchTurn();
@@ -643,13 +657,8 @@ export default class ScrabbleServer implements Party.Server {
 			timestamp: Date.now()
 		});
 
-		if (this.state.allowDeadlock) {
-			const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-			if (this.state.consecutivePasses >= maxPasses) {
-				this.finishGame(null);
-				this.broadcastState();
-				return;
-			}
+		if (this.checkDeadlock(player)) {
+			return;
 		}
 
 		this.switchTurn();
@@ -710,6 +719,13 @@ export default class ScrabbleServer implements Party.Server {
 			totalScore: 0,
 			timestamp: Date.now()
 		});
+
+		player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+		this.state.consecutivePasses++;
+
+		if (this.checkDeadlock(player)) {
+			return;
+		}
 
 		this.switchTurn();
 		this.broadcastState();
@@ -798,19 +814,29 @@ export default class ScrabbleServer implements Party.Server {
 				}
 			}
 			this.state.players[finisherId].score += unplayedTotal;
+		} else {
+			// Stalemate deduction: each player subtracts remaining unplayed tiles
+			for (const pid of this.state.playerOrder) {
+				const remainingSum = this.state.players[pid].rack.reduce((sum, t) => sum + t.value, 0);
+				this.state.players[pid].score = Math.max(0, this.state.players[pid].score - remainingSum);
+			}
 		}
 
-		// Determine winner
-		let highestScore = -1;
+		// Determine winner (handling ties)
+		let highestScore = -Infinity;
 		let winner: string | null = null;
+		let isTie = false;
 		for (const pid of this.state.playerOrder) {
 			const p = this.state.players[pid];
 			if (p.score > highestScore) {
 				highestScore = p.score;
 				winner = p.id;
+				isTie = false;
+			} else if (p.score === highestScore) {
+				isTie = true;
 			}
 		}
-		this.state.winnerId = winner;
+		this.state.winnerId = isTie ? null : winner;
 	}
 
 	broadcastState() {
