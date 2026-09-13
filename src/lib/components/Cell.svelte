@@ -24,6 +24,7 @@
 	const tileToRender = $derived(cell.tile || pendingTile);
 	const isPending = $derived(!cell.isLocked && pendingTile !== null && !isOpponentDraft);
 	const isLocked = $derived(cell.isLocked && cell.tile !== null);
+	const isUnverified = $derived(!cell.isLocked && cell.tile !== null);
 
 	// Label for empty multiplier cells
 	const multiplierLabel = $derived.by(() => {
@@ -99,6 +100,7 @@
 			{isPending}
 			{isLocked}
 			{isOpponentDraft}
+			{isUnverified}
 		/>
 	{:else}
 		<span class="text-[clamp(7.5px,2.2vw,11px)] font-bold tracking-tighter leading-none select-none">

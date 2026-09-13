@@ -10,9 +10,10 @@ import type {
 import {
 	createEmptyBoard,
 	createFreshTileBag,
-	RACK_CAPACITY
+	RACK_CAPACITY,
+	getCellMultiplier
 } from '../src/lib/engine/board-constants';
-import { validateAndScoreMove } from '../src/lib/engine/validator';
+import { validateAndScoreMove, checkWordsInDictionary } from '../src/lib/engine/validator';
 import { getDictionary } from './dictionary-loader';
 import { findBestBotMove } from '../src/lib/engine/bot';
 
@@ -115,6 +116,12 @@ export default class ScrabbleServer implements Party.Server {
 				break;
 			case 'DRAFT_MOVE':
 				this.handleDraftMove(msg.placements, senderId, conn);
+				break;
+			case 'CHALLENGE_PLAY':
+				this.handleChallengePlay(senderId, conn);
+				break;
+			case 'ACCEPT_PLAY':
+				this.handleAcceptPlay(senderId, conn);
 				break;
 			case 'PLAY_MOVE':
 				this.handlePlayMove(msg.placements, senderId, conn);
@@ -506,6 +513,11 @@ export default class ScrabbleServer implements Party.Server {
 			return;
 		}
 
+		if (this.state.pendingChallenge) {
+			if (conn) this.sendError(conn, 'Must resolve the pending challenge first.');
+			return;
+		}
+
 		if (this.state.turnPlayerId !== senderId) {
 			if (conn) this.sendError(conn, "It's not your turn!");
 			return;
@@ -532,15 +544,16 @@ export default class ScrabbleServer implements Party.Server {
 			rackCopy.splice(index, 1);
 		}
 
-		// Run Scrabble validation and scoring
+		// Run Scrabble validation and scoring with skipDictionaryCheck = true (Challenge Rule)
 		const result = validateAndScoreMove(
 			this.state.board,
 			placements,
 			this.dictionary,
-			isFirstMove
+			isFirstMove,
+			true
 		);
 
-		// 1-Strike Rule: If move is invalid, immediately pass turn to opponent
+		// 1-Strike Rule: If geometry or connectivity is invalid, immediately pass turn to opponent
 		if (!result.valid) {
 			player.invalidAttempts = 0;
 			player.consecutivePasses = (player.consecutivePasses || 0) + 1;
@@ -572,11 +585,7 @@ export default class ScrabbleServer implements Party.Server {
 			return;
 		}
 
-		// Reset consecutive passes on valid move
-		player.consecutivePasses = 0;
-		this.state.consecutivePasses = 0;
-
-		// Apply move to board
+		// Apply move to board as unverified (isLocked: false) pending challenge
 		for (const p of placements) {
 			const finalLetter = p.tile.isBlank ? (p.tile.assignedLetter?.toUpperCase() || 'A') : p.tile.letter.toUpperCase();
 			const placedTile: ScrabbleTile = {
@@ -590,44 +599,101 @@ export default class ScrabbleServer implements Party.Server {
 			this.state.board[p.row][p.col] = {
 				...this.state.board[p.row][p.col],
 				tile: placedTile,
-				isLocked: true
+				isLocked: false
 			};
 		}
 
-		// Update Player Rack: remove used tiles and draw replacements
+		// Remove played tiles from rack (drawn replacements will be added upon challenge resolution)
 		player.rack = rackCopy;
-		const neededTiles = RACK_CAPACITY - player.rack.length;
-		const newTiles = this.drawTiles(neededTiles);
-		player.rack.push(...newTiles);
-
-		// Update player score
 		player.score += result.totalScore;
-		this.state.remainingBagCount = this.state.tileBag.length;
 
-		// Add to move history
-		const wordsSummary = result.words.map((w) => ({ word: w.word, score: w.score }));
-		const wordsListStr = result.words.map((w) => w.word).join(', ');
-		this.state.moveHistory.unshift({
-			id: `move_${Date.now()}`,
+		const opponentId = this.state.playerOrder.find((pid) => pid !== senderId) || '';
+
+		this.state.pendingChallenge = {
 			playerId: player.id,
 			playerName: player.name,
-			type: 'PLAY',
-			words: wordsSummary,
+			challengerId: opponentId,
+			placements,
+			words: result.words.map((w) => ({ word: w.word, score: w.score })),
 			totalScore: result.totalScore,
+			isBingo: result.isBingo
+		};
+
+		// Pause turn timer during challenge decision window
+		this.clearTurnTimer();
+
+		// If opponent is AI Bot, bot decides immediately
+		if (opponentId === 'bot_ai') {
+			const { allValid } = checkWordsInDictionary(this.state.pendingChallenge.words, this.dictionary);
+			if (this.botTimeout) clearTimeout(this.botTimeout);
+			this.botTimeout = setTimeout(() => {
+				if (!this.state.pendingChallenge) return;
+				if (allValid) {
+					this.handleAcceptPlay('bot_ai');
+				} else {
+					this.handleChallengePlay('bot_ai');
+				}
+			}, 1200);
+		}
+
+		this.broadcastState();
+	}
+
+	handleAcceptPlay(senderId: string, conn?: Party.Connection) {
+		if (this.state.status !== 'PLAYING' || !this.state.pendingChallenge) {
+			if (conn) this.sendError(conn, 'No pending challenge to accept.');
+			return;
+		}
+
+		if (this.state.pendingChallenge.challengerId !== senderId) {
+			if (conn) this.sendError(conn, 'Only the opposing player can accept this play.');
+			return;
+		}
+
+		const challenge = this.state.pendingChallenge;
+		const player = this.state.players[challenge.playerId];
+
+		// Permanently lock the tiles on board
+		for (const p of challenge.placements) {
+			if (this.state.board[p.row][p.col].tile) {
+				this.state.board[p.row][p.col].isLocked = true;
+			}
+		}
+
+		// Draw replacement tiles for player
+		if (player) {
+			const neededTiles = RACK_CAPACITY - player.rack.length;
+			const newTiles = this.drawTiles(neededTiles);
+			player.rack.push(...newTiles);
+			player.consecutivePasses = 0;
+		}
+		this.state.consecutivePasses = 0;
+		this.state.remainingBagCount = this.state.tileBag.length;
+
+		// Record in move history
+		const wordsListStr = challenge.words.map((w) => w.word).join(', ');
+		this.state.moveHistory.unshift({
+			id: `move_${Date.now()}`,
+			playerId: challenge.playerId,
+			playerName: challenge.playerName,
+			type: 'PLAY',
+			words: challenge.words,
+			totalScore: challenge.totalScore,
 			timestamp: Date.now()
 		});
 
-		// Notify players of the move
-		const successMessage = result.isBingo
-			? `🎉 BINGO! ${player.name} played "${wordsListStr}" (+${result.totalScore} pts)`
-			: `${player.name} played "${wordsListStr}" (+${result.totalScore} pts)`;
+		const successMsg = challenge.isBingo
+			? `🎉 BINGO! ${challenge.playerName} played "${wordsListStr}" (+${challenge.totalScore} pts)`
+			: `${challenge.playerName} played "${wordsListStr}" (+${challenge.totalScore} pts)`;
 
 		for (const c of this.party.getConnections()) {
-			this.sendNotification(c, successMessage, 'success');
+			this.sendNotification(c, successMsg, 'success');
 		}
 
+		this.state.pendingChallenge = null;
+
 		// Check Game End Condition: Tile bag is empty and one player used all tiles
-		if (this.state.tileBag.length === 0 && player.rack.length === 0) {
+		if (player && this.state.tileBag.length === 0 && player.rack.length === 0) {
 			this.finishGame(player.id);
 		} else {
 			this.switchTurn();
@@ -636,9 +702,130 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
+	handleChallengePlay(senderId: string, conn?: Party.Connection) {
+		if (this.state.status !== 'PLAYING' || !this.state.pendingChallenge) {
+			if (conn) this.sendError(conn, 'No pending challenge to resolve.');
+			return;
+		}
+
+		if (this.state.pendingChallenge.challengerId !== senderId) {
+			if (conn) this.sendError(conn, 'Only the opposing player can challenge this play.');
+			return;
+		}
+
+		const challenge = this.state.pendingChallenge;
+		const player = this.state.players[challenge.playerId];
+		const challenger = this.state.players[senderId];
+
+		const { allValid, invalidWords } = checkWordsInDictionary(challenge.words, this.dictionary);
+
+		if (!allValid) {
+			// SUCCESSFUL CHALLENGE: Remove tiles from board & return to player
+			for (const p of challenge.placements) {
+				this.state.board[p.row][p.col] = {
+					row: p.row,
+					col: p.col,
+					multiplier: getCellMultiplier(p.row, p.col),
+					tile: null,
+					isLocked: false
+				};
+			}
+
+			if (player) {
+				const originalTiles = challenge.placements.map((p) => p.tile);
+				player.rack.push(...originalTiles);
+				player.score = Math.max(0, player.score - challenge.totalScore);
+				player.consecutivePasses = (player.consecutivePasses || 0) + 1;
+			}
+			this.state.consecutivePasses++;
+
+			this.state.moveHistory.unshift({
+				id: `challenge_success_${Date.now()}`,
+				playerId: challenge.playerId,
+				playerName: challenge.playerName,
+				type: 'PASS',
+				totalScore: 0,
+				timestamp: Date.now()
+			});
+
+			const invalidStr = invalidWords.join(', ');
+			for (const c of this.party.getConnections()) {
+				this.sendNotification(
+					c,
+					`✅ Challenge Successful! "${invalidStr}" is NOT a valid word. Tiles returned to ${challenge.playerName}.`,
+					'warning'
+				);
+			}
+
+			this.state.pendingChallenge = null;
+
+			if (player && this.checkDeadlock(player)) {
+				return;
+			}
+
+			this.switchTurn();
+			this.broadcastState();
+		} else {
+			// FAILED CHALLENGE (Option B: 5-point penalty for challenger)
+			for (const p of challenge.placements) {
+				if (this.state.board[p.row][p.col].tile) {
+					this.state.board[p.row][p.col].isLocked = true;
+				}
+			}
+
+			if (player) {
+				const neededTiles = RACK_CAPACITY - player.rack.length;
+				const newTiles = this.drawTiles(neededTiles);
+				player.rack.push(...newTiles);
+				player.consecutivePasses = 0;
+			}
+			this.state.consecutivePasses = 0;
+			this.state.remainingBagCount = this.state.tileBag.length;
+
+			// Challenger loses 5 points
+			if (challenger) {
+				challenger.score = Math.max(0, challenger.score - 5);
+			}
+
+			const wordsListStr = challenge.words.map((w) => w.word).join(', ');
+			this.state.moveHistory.unshift({
+				id: `move_${Date.now()}`,
+				playerId: challenge.playerId,
+				playerName: challenge.playerName,
+				type: 'PLAY',
+				words: challenge.words,
+				totalScore: challenge.totalScore,
+				timestamp: Date.now()
+			});
+
+			for (const c of this.party.getConnections()) {
+				this.sendNotification(
+					c,
+					`❌ Challenge Failed! "${wordsListStr}" is valid. ${challenger?.name} penalized -5 pts.`,
+					'info'
+				);
+			}
+
+			this.state.pendingChallenge = null;
+
+			if (player && this.state.tileBag.length === 0 && player.rack.length === 0) {
+				this.finishGame(player.id);
+			} else {
+				this.switchTurn();
+			}
+
+			this.broadcastState();
+		}
+	}
+
 	handlePassTurn(senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
 			if (conn) this.sendError(conn, 'Cannot pass right now.');
+			return;
+		}
+
+		if (this.state.pendingChallenge) {
+			if (conn) this.sendError(conn, 'Must resolve the pending challenge first.');
 			return;
 		}
 
@@ -668,6 +855,11 @@ export default class ScrabbleServer implements Party.Server {
 	handleSwapTiles(tileIds: string[], senderId: string, conn?: Party.Connection) {
 		if (this.state.status !== 'PLAYING' || this.state.turnPlayerId !== senderId) {
 			if (conn) this.sendError(conn, 'Cannot swap tiles right now.');
+			return;
+		}
+
+		if (this.state.pendingChallenge) {
+			if (conn) this.sendError(conn, 'Must resolve the pending challenge first.');
 			return;
 		}
 

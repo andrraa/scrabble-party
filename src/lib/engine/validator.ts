@@ -18,7 +18,8 @@ export function validateAndScoreMove(
 	currentBoard: BoardCell[][],
 	placements: PlacedTileMove[],
 	dict: Set<string>,
-	isFirstMove: boolean
+	isFirstMove: boolean,
+	skipDictionaryCheck: boolean = false
 ): MoveValidationResult {
 	if (placements.length === 0) {
 		return { valid: false, error: 'No tiles placed on the board.', words: [], totalScore: 0, isBingo: false };
@@ -329,16 +330,18 @@ export function validateAndScoreMove(
 		return { valid: false, error: 'Move did not create any complete valid words of at least 2 letters.', words: [], totalScore: 0, isBingo: false };
 	}
 
-	// 6. Validate words against dictionary
-	for (const formed of formedWords) {
-		if (!dict.has(formed.word.toUpperCase())) {
-			return {
-				valid: false,
-				error: `"${formed.word.toUpperCase()}" is not in the Scrabble dictionary.`,
-				words: formedWords,
-				totalScore: 0,
-				isBingo: false
-			};
+	// 6. Validate words against dictionary (skipped during initial placement if challenge mode is active)
+	if (!skipDictionaryCheck) {
+		for (const formed of formedWords) {
+			if (!dict.has(formed.word.toUpperCase())) {
+				return {
+					valid: false,
+					error: `"${formed.word.toUpperCase()}" is not in the Scrabble dictionary.`,
+					words: formedWords,
+					totalScore: 0,
+					isBingo: false
+				};
+			}
 		}
 	}
 
@@ -354,6 +357,23 @@ export function validateAndScoreMove(
 		words: formedWords,
 		totalScore,
 		isBingo
+	};
+}
+
+export function checkWordsInDictionary(
+	words: { word: string }[],
+	dict: Set<string>
+): { allValid: boolean; invalidWords: string[] } {
+	const invalidWords: string[] = [];
+	for (const item of words) {
+		const upper = item.word.toUpperCase();
+		if (!dict.has(upper)) {
+			invalidWords.push(upper);
+		}
+	}
+	return {
+		allValid: invalidWords.length === 0,
+		invalidWords
 	};
 }
 

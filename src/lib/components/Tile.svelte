@@ -9,6 +9,7 @@
 		isLocked = false,
 		isSelected = false,
 		isOpponentDraft = false,
+		isUnverified = false,
 		size = 'normal', // 'small' | 'normal' | 'board'
 		class: className = '',
 		onclick
@@ -18,6 +19,7 @@
 		isLocked?: boolean;
 		isSelected?: boolean;
 		isOpponentDraft?: boolean;
+		isUnverified?: boolean;
 		size?: 'small' | 'normal' | 'board';
 		class?: string;
 		onclick?: () => void;
@@ -45,7 +47,8 @@
 				isLocked && 'bg-[#fcf8f2] text-amber-950 border border-[#d9cbb7]',
 				isPending && 'bg-amber-100 text-amber-900 border-2 border-amber-500 ring-2 ring-amber-300/70 scale-[1.03] shadow-md z-10',
 				isOpponentDraft && 'bg-indigo-50 text-indigo-950 border-2 border-indigo-500 ring-2 ring-indigo-300/80 scale-[1.02] shadow-md z-10 animate-pulse',
-				!isLocked && !isPending && !isOpponentDraft && 'bg-[#fdfbf7] text-amber-950 border border-[#e2d5c3] active:scale-95 shadow-xs hover:border-amber-400',
+				isUnverified && 'bg-amber-50 text-amber-950 border-2 border-dashed border-amber-500 ring-2 ring-amber-300/70 scale-[1.02] shadow-md z-10 animate-pulse',
+				!isLocked && !isPending && !isOpponentDraft && !isUnverified && 'bg-[#fdfbf7] text-amber-950 border border-[#e2d5c3] active:scale-95 shadow-xs hover:border-amber-400',
 				isSelected && 'ring-2 ring-amber-600 border-amber-600 -translate-y-2 shadow-lg bg-amber-50 z-20 scale-105',
 				className
 			)

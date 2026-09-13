@@ -62,6 +62,16 @@ export interface MoveHistoryItem {
 	timestamp: number;
 }
 
+export interface PendingChallenge {
+	playerId: string;
+	playerName: string;
+	challengerId: string;
+	placements: PlacedTileMove[];
+	words: { word: string; score: number }[];
+	totalScore: number;
+	isBingo: boolean;
+}
+
 export interface GameState {
 	code: string;
 	status: 'LOBBY' | 'PLAYING' | 'FINISHED';
@@ -79,6 +89,7 @@ export interface GameState {
 	allowDeadlock: boolean; // true = 6x pass ends game, false = no deadlock end
 	draftPlacements?: PlacedTileMove[]; // Live realtime preview of opponent drafting tiles
 	turnStartTime: number;
+	pendingChallenge?: PendingChallenge | null;
 }
 
 // WebSocket Message Types
@@ -89,6 +100,8 @@ export type ClientMessage =
 	| { type: 'ADD_BOT'; playerId?: string }
 	| { type: 'PLAY_MOVE'; placements: PlacedTileMove[]; playerId?: string }
 	| { type: 'DRAFT_MOVE'; placements: PlacedTileMove[]; playerId?: string }
+	| { type: 'CHALLENGE_PLAY'; playerId?: string }
+	| { type: 'ACCEPT_PLAY'; playerId?: string }
 	| { type: 'PASS_TURN'; playerId?: string }
 	| { type: 'SWAP_TILES'; tileIds: string[]; playerId?: string }
 	| { type: 'RESTART_GAME'; playerId?: string }

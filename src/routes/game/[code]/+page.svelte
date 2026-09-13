@@ -22,6 +22,7 @@
 	import GameLog from '$lib/components/GameLog.svelte';
 	import BlankDialog from '$lib/components/BlankDialog.svelte';
 	import SwapDialog from '$lib/components/SwapDialog.svelte';
+	import ChallengeDialog from '$lib/components/ChallengeDialog.svelte';
 	import GameOverModal from '$lib/components/GameOverModal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -502,6 +503,22 @@
 			playerId: currentUserId
 		});
 		showSwapDialog = false;
+	}
+
+	function handleAcceptChallenge() {
+		if (!socket || !gameState.pendingChallenge) return;
+		sendSocketMessage(socket, {
+			type: 'ACCEPT_PLAY',
+			playerId: currentUserId
+		});
+	}
+
+	function handleChallengePlay() {
+		if (!socket || !gameState.pendingChallenge) return;
+		sendSocketMessage(socket, {
+			type: 'CHALLENGE_PLAY',
+			playerId: currentUserId
+		});
 	}
 
 	function handleStartGame() {
@@ -1075,5 +1092,13 @@
 		{currentUserId}
 		onClose={() => (showGameOverModal = false)}
 		onRestart={handleRestartGame}
+	/>
+
+	<ChallengeDialog
+		isOpen={Boolean(gameState.pendingChallenge)}
+		pendingChallenge={gameState.pendingChallenge || null}
+		isChallenger={gameState.pendingChallenge?.challengerId === currentUserId}
+		onAccept={handleAcceptChallenge}
+		onChallenge={handleChallengePlay}
 	/>
 </main>
