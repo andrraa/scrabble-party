@@ -5,17 +5,20 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { getRecentMatches, type RecentMatch } from '$lib/match-history';
 
 	let playerName = $state('');
 	let gameCodeInput = $state('');
 	let activeTab = $state<'create' | 'join'>('create');
 	let errorMessage = $state('');
 	let isLoading = $state(true);
+	let recentMatches = $state<RecentMatch[]>([]);
 
 	onMount(() => {
 		if (typeof window !== 'undefined') {
 			const saved = localStorage.getItem('scrabble_player_name');
 			if (saved) playerName = saved;
+			recentMatches = getRecentMatches();
 		}
 		// Smooth transition timeout
 		const timer = setTimeout(() => {
@@ -206,6 +209,69 @@
 			<span>•</span>
 			<span>Responsive</span>
 		</div>
+
+		<!-- Recent Matches History Card (Up to 10 latest games) -->
+		{#if recentMatches.length > 0}
+			<Card class="w-full shadow-md border-slate-200/80 p-4 sm:p-5 rounded-2xl animate-in fade-in duration-200">
+				<div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
+					<div class="flex items-center gap-1.5">
+						<span class="text-sm">📜</span>
+						<h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Recent Matches</h3>
+					</div>
+					<span class="text-[11px] font-medium text-slate-400">Last {recentMatches.length} games</span>
+				</div>
+
+				<div class="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-0.5">
+					{#each recentMatches as match (match.id)}
+						<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col gap-1.5 text-xs transition-all hover:bg-slate-100/70">
+							<div class="flex items-center justify-between text-[10px] text-slate-400">
+								<span class="font-mono font-bold text-slate-600 bg-slate-200/60 px-1.5 py-0.2 rounded">
+									Room {match.roomCode}
+								</span>
+								<span>
+									{new Date(match.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+								</span>
+							</div>
+
+							<div class="flex items-center justify-between py-0.5">
+								<!-- Player 1 -->
+								<div class="flex items-center gap-1.5 min-w-0">
+									<span class="font-semibold text-slate-800 truncate max-w-[90px] sm:max-w-[110px] {match.winnerName === match.player1.name ? 'text-amber-950 font-bold' : ''}">
+										{match.player1.name}
+									</span>
+									<span class="px-1.5 py-0.5 rounded font-mono font-bold text-xs {match.winnerName === match.player1.name ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-200/80 text-slate-600'}">
+										{match.player1.score}
+									</span>
+								</div>
+
+								<span class="text-[10px] text-slate-400 font-semibold px-1">vs</span>
+
+								<!-- Player 2 -->
+								<div class="flex items-center gap-1.5 min-w-0 justify-end">
+									<span class="px-1.5 py-0.5 rounded font-mono font-bold text-xs {match.winnerName === match.player2.name ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-slate-200/80 text-slate-600'}">
+										{match.player2.score}
+									</span>
+									<span class="font-semibold text-slate-800 truncate max-w-[90px] sm:max-w-[110px] {match.winnerName === match.player2.name ? 'text-amber-950 font-bold' : ''}">
+										{match.player2.name}
+									</span>
+								</div>
+							</div>
+
+							<div class="flex items-center justify-between pt-1 border-t border-slate-200/50 text-[10px]">
+								{#if match.isTie}
+									<span class="font-semibold text-slate-500">Result: Draw (Tie)</span>
+								{:else}
+									<span class="font-semibold text-emerald-700 flex items-center gap-1">
+										<span>🏆</span>
+										<span>Winner: <strong>{match.winnerName}</strong></span>
+									</span>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</Card>
+		{/if}
 	</div>
 
 	<!-- Footer with Author Signature -->

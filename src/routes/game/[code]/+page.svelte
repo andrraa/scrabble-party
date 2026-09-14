@@ -28,6 +28,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
+	import { saveMatchResult } from '$lib/match-history';
 
 	const roomCode = $derived((page.params.code || '').toUpperCase());
 
@@ -181,6 +182,22 @@
 				}
 				if (msg.state.status === 'FINISHED') {
 					showGameOverModal = true;
+					const p1Id = msg.state.playerOrder[0];
+					const p2Id = msg.state.playerOrder[1];
+					const p1 = p1Id ? msg.state.players[p1Id] : null;
+					const p2 = p2Id ? msg.state.players[p2Id] : null;
+					if (p1 && p2) {
+						const winner = msg.state.winnerId ? msg.state.players[msg.state.winnerId] : null;
+						saveMatchResult({
+							id: `${roomCode}_${msg.state.lastMoveTime || Date.now()}`,
+							timestamp: msg.state.lastMoveTime || Date.now(),
+							roomCode,
+							player1: { name: p1.name, score: p1.score },
+							player2: { name: p2.name, score: p2.score },
+							winnerName: winner ? winner.name : null,
+							isTie: msg.state.winnerId === null
+						});
+					}
 				}
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
