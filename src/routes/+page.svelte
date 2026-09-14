@@ -9,7 +9,7 @@
 
 	let playerName = $state('');
 	let gameCodeInput = $state('');
-	let activeTab = $state<'create' | 'join'>('create');
+	let activeTab = $state<'create' | 'join' | 'history'>('create');
 	let errorMessage = $state('');
 	let isLoading = $state(true);
 	let recentMatches = $state<RecentMatch[]>([]);
@@ -122,7 +122,7 @@
 			</div>
 
 			<!-- Tab Switcher -->
-			<div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl mb-5">
+			<div class="grid grid-cols-3 p-1 bg-slate-100 rounded-xl mb-5">
 				<button
 					type="button"
 					onclick={() => { activeTab = 'create'; errorMessage = ''; }}
@@ -130,7 +130,7 @@
 						? 'bg-white text-slate-900 shadow-xs'
 						: 'text-slate-500 hover:text-slate-900'}"
 				>
-					Create Game
+					Create
 				</button>
 				<button
 					type="button"
@@ -139,7 +139,16 @@
 						? 'bg-white text-slate-900 shadow-xs'
 						: 'text-slate-500 hover:text-slate-900'}"
 				>
-					Join Game
+					Join
+				</button>
+				<button
+					type="button"
+					onclick={() => { activeTab = 'history'; errorMessage = ''; }}
+					class="py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer {activeTab === 'history'
+						? 'bg-white text-slate-900 shadow-xs'
+						: 'text-slate-500 hover:text-slate-900'}"
+				>
+					History ({recentMatches.length})
 				</button>
 			</div>
 
@@ -168,7 +177,7 @@
 						🤖 Play vs AI Bot (Single Player)
 					</Button>
 				</div>
-			{:else}
+			{:else if activeTab === 'join'}
 				<div class="flex flex-col gap-4">
 					<div class="flex flex-col gap-1.5">
 						<label for="code" class="text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -192,6 +201,52 @@
 						Join Match
 					</Button>
 				</div>
+			{:else}
+				<!-- Tab History Inside Card -->
+				<div class="flex flex-col gap-2">
+					<div class="flex items-center justify-between pb-1 border-b border-slate-100">
+						<span class="text-xs font-bold text-slate-700">Recent 10 Matches</span>
+						<span class="text-[10px] text-slate-400">{recentMatches.length} recorded</span>
+					</div>
+
+					{#if recentMatches.length === 0}
+						<div class="py-6 text-center flex flex-col items-center gap-1.5">
+							<span class="text-2xl opacity-60">🎮</span>
+							<p class="text-xs font-semibold text-slate-600">No match history yet</p>
+							<p class="text-[11px] text-slate-400">Complete a game to see your scores here.</p>
+						</div>
+					{:else}
+						<div class="flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-0.5">
+							{#each recentMatches as match (match.id)}
+								<div class="p-2 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col gap-1 text-xs">
+									<div class="flex items-center justify-between text-[10px] text-slate-400">
+										<span class="font-mono font-bold text-slate-600">Room {match.roomCode}</span>
+										<span>{new Date(match.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+									</div>
+									<div class="flex items-center justify-between">
+										<span class="font-semibold text-slate-800 truncate {match.winnerName === match.player1.name ? 'text-amber-950 font-bold' : ''}">
+											{match.player1.name} <span class="font-mono font-bold text-amber-900">({match.player1.score})</span>
+										</span>
+										<span class="text-[10px] text-slate-400 font-semibold px-1">vs</span>
+										<span class="font-semibold text-slate-800 truncate {match.winnerName === match.player2.name ? 'text-amber-950 font-bold' : ''}">
+											{match.player2.name} <span class="font-mono font-bold text-amber-900">({match.player2.score})</span>
+										</span>
+									</div>
+									<div class="flex items-center justify-between text-[10px] pt-1 border-t border-slate-200/40">
+										{#if match.isTie}
+											<span class="text-slate-500 font-medium">Draw</span>
+										{:else}
+											<span class="text-emerald-700 font-semibold flex items-center gap-1">
+												<span>🏆</span>
+												<span>{match.winnerName} won</span>
+											</span>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
 			{/if}
 
 			{#if errorMessage}
@@ -210,17 +265,27 @@
 			<span>Responsive</span>
 		</div>
 
-		<!-- Recent Matches History Card (Up to 10 latest games) -->
-		{#if recentMatches.length > 0}
-			<Card class="w-full shadow-md border-slate-200/80 p-4 sm:p-5 rounded-2xl animate-in fade-in duration-200">
-				<div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
-					<div class="flex items-center gap-1.5">
-						<span class="text-sm">📜</span>
-						<h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Recent Matches</h3>
-					</div>
-					<span class="text-[11px] font-medium text-slate-400">Last {recentMatches.length} games</span>
+		<!-- Recent Matches History Card (Always visible below main card) -->
+		<Card class="w-full shadow-md border-slate-200/80 p-4 sm:p-5 rounded-2xl animate-in fade-in duration-200">
+			<div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
+				<div class="flex items-center gap-1.5">
+					<span class="text-sm">📜</span>
+					<h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Recent Matches (Last 10)</h3>
 				</div>
+				<span class="text-[11px] font-medium text-slate-400">
+					{recentMatches.length > 0 ? `${recentMatches.length} recorded` : 'Empty'}
+				</span>
+			</div>
 
+			{#if recentMatches.length === 0}
+				<div class="py-6 flex flex-col items-center justify-center text-center gap-2">
+					<span class="text-2xl opacity-60">🎮</span>
+					<p class="text-xs font-semibold text-slate-600">No matches recorded yet</p>
+					<p class="text-[11px] text-slate-400 max-w-[250px] leading-relaxed">
+						Play a match vs AI Bot or another player. Your 10 most recent game scores and results will appear here.
+					</p>
+				</div>
+			{:else}
 				<div class="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-0.5">
 					{#each recentMatches as match (match.id)}
 						<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex flex-col gap-1.5 text-xs transition-all hover:bg-slate-100/70">
@@ -270,8 +335,8 @@
 						</div>
 					{/each}
 				</div>
-			</Card>
-		{/if}
+			{/if}
+		</Card>
 	</div>
 
 	<!-- Footer with Author Signature -->
