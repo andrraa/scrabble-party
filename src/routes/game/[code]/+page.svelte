@@ -28,7 +28,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import { saveMatchResult, getRecentMatches, type RecentMatch } from '$lib/match-history';
+	import { saveMatchResult } from '$lib/match-history';
 
 	const roomCode = $derived((page.params.code || '').toUpperCase());
 
@@ -37,8 +37,7 @@
 	let isConnected = $state(false);
 	let isAudioMuted = $state(false);
 	let storedPlayerName = $state('Player');
-	let recentMatches = $state<RecentMatch[]>([]);
-
+	
 	// Translucent floating toast state
 	interface Toast {
 		id: number;
@@ -199,8 +198,7 @@
 							winnerName: winner ? winner.name : null,
 							isTie: msg.state.winnerId === null
 						});
-						recentMatches = getRecentMatches();
-					}
+											}
 				}
 				if (typeof window !== 'undefined' && msg.yourPlayerId) {
 					sessionStorage.setItem(`scrabble_pid_${roomCode}`, msg.yourPlayerId);
@@ -250,7 +248,6 @@
 				sessionStorage.setItem('scrabble_player_name', playerName);
 			}
 			storedPlayerName = playerName;
-			recentMatches = getRecentMatches();
 
 			const savedMute = localStorage.getItem('scrabble_mute');
 			if (savedMute === 'true') {
@@ -880,34 +877,7 @@
 						{/if}
 					</div>
 
-					<!-- Recent Match History Preview inside Lobby -->
-					{#if recentMatches.length > 0}
-						<div class="flex flex-col gap-1.5 pt-3 border-t border-slate-200/80 text-left">
-							<div class="flex items-center justify-between text-xs">
-								<div class="flex items-center gap-1.5 font-bold text-slate-700">
-									<span>📜</span>
-									<span class="uppercase tracking-wider text-[11px]">Recent Matches</span>
-								</div>
-								<span class="text-[10px] text-slate-400 font-medium">Last {recentMatches.length} games</span>
-							</div>
-
-							<div class="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto pr-0.5">
-								{#each recentMatches.slice(0, 5) as match (match.id)}
-									<div class="p-2 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] flex items-center justify-between">
-										<div class="flex items-center gap-1.5 truncate min-w-0 pr-2">
-											<span class="font-bold text-slate-800 truncate">{match.player1.name} <span class="text-amber-900 font-mono">({match.player1.score})</span></span>
-											<span class="text-slate-400 text-[10px]">vs</span>
-											<span class="font-bold text-slate-800 truncate">{match.player2.name} <span class="text-amber-900 font-mono">({match.player2.score})</span></span>
-										</div>
-										<span class="font-semibold text-emerald-700 shrink-0 text-[10px]">
-											{match.isTie ? 'Draw' : `🏆 ${match.winnerName}`}
-										</span>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				</Card>
+					</Card>
 			</div>
 
 		<!-- GAME PLAYING / FINISHED SCREEN -->
