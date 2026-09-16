@@ -87,6 +87,7 @@ export interface GameState {
 	lastMoveTime: number;
 	timerDuration: number; // 0 = no timer, or 60, 90, 120, 180 seconds
 	allowDeadlock: boolean; // true = 6x pass ends game, false = no deadlock end
+	challengeMode: boolean; // true = manual challenge, false = auto validate
 	draftPlacements?: PlacedTileMove[]; // Live realtime preview of opponent drafting tiles
 	turnStartTime: number;
 	pendingChallenge?: PendingChallenge | null;
@@ -107,6 +108,7 @@ export type ClientMessage =
 	| { type: 'RESTART_GAME'; playerId?: string }
 	| { type: 'SET_TIMER'; seconds: number; playerId?: string }
 	| { type: 'SET_DEADLOCK'; enabled: boolean; playerId?: string }
+	| { type: 'SET_CHALLENGE_MODE'; enabled: boolean; playerId?: string }
 	| { type: 'SEND_EMOTE'; emote: string; playerId?: string }
 	| { type: 'LEAVE_GAME'; playerId?: string }
 	| { type: 'TIMER_EXPIRED'; playerId?: string };

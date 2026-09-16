@@ -83,6 +83,7 @@
 		lastMoveTime: Date.now(),
 		timerDuration: 90,
 		allowDeadlock: true,
+		challengeMode: false,
 		draftPlacements: [],
 		turnStartTime: Date.now(),
 		pendingChallenge: null
@@ -327,6 +328,15 @@
 		if (!socket || !isHost) return;
 		sendSocketMessage(socket, {
 			type: 'SET_DEADLOCK',
+			enabled,
+			playerId: currentUserId
+		});
+	}
+
+	function handleSetChallengeMode(enabled: boolean) {
+		if (!socket || !isHost) return;
+		sendSocketMessage(socket, {
+			type: 'SET_CHALLENGE_MODE',
 			enabled,
 			playerId: currentUserId
 		});
@@ -760,6 +770,45 @@
 								<strong class="text-slate-700 font-semibold">Note:</strong> When Enabled, the match ends automatically if both players pass 6 consecutive times (board deadlock), with the highest scoring player declared winner.
 							{:else}
 								<strong class="text-slate-700 font-semibold">Note:</strong> When Disabled, the game will never end prematurely and continues until the tile bag is empty or a player resigns.
+							{/if}
+						</p>
+					</div>
+
+					<!-- Challenge Mode Setting (Configurable by Host in Lobby) -->
+					<div class="flex flex-col gap-1.5 text-left p-3 rounded-xl bg-slate-50 border border-slate-200">
+						<div class="flex items-center justify-between">
+							<span class="text-xs font-semibold text-slate-700">Word Validation</span>
+							<span class="text-xs font-bold {gameState.challengeMode ? 'text-amber-700' : 'text-blue-700'}">
+								{gameState.challengeMode ? 'Manual Challenge' : 'Automatic (Instant)'}
+							</span>
+						</div>
+						{#if isHost}
+							<div class="grid grid-cols-2 gap-1.5 pt-0.5">
+								<button
+									type="button"
+									onclick={() => handleSetChallengeMode(false)}
+									class="py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer {!gameState.challengeMode
+										? 'bg-slate-900 text-white border-slate-900'
+										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
+								>
+									Automatic
+								</button>
+								<button
+									type="button"
+									onclick={() => handleSetChallengeMode(true)}
+									class="py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer {gameState.challengeMode
+										? 'bg-slate-900 text-white border-slate-900'
+										: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}"
+								>
+									Challenge Mode
+								</button>
+							</div>
+						{/if}
+						<p class="text-[10px] text-slate-500 leading-relaxed pt-1.5 border-t border-slate-200/60 mt-0.5">
+							{#if gameState.challengeMode}
+								<strong class="text-slate-700 font-semibold">Challenge:</strong> Words are placed on the board without auto-checking. Opponent decides whether to Accept or Challenge (-5 pts penalty if valid).
+							{:else}
+								<strong class="text-slate-700 font-semibold">Automatic:</strong> Words are verified immediately against Collins CSW24. Invalid words pass turn automatically (1-strike rule).
 							{/if}
 						</p>
 					</div>
