@@ -86,7 +86,7 @@ export interface GameState {
 	winnerId: string | null;
 	lastMoveTime: number;
 	timerDuration: number; // 0 = no timer, or 60, 90, 120, 180 seconds
-	allowDeadlock: boolean; // true = 6x pass ends game, false = no deadlock end
+	allowDeadlock: boolean; // true = both players passing 3 consecutive turns ends game
 	challengeMode: boolean; // true = manual challenge, false = auto validate
 	draftPlacements?: PlacedTileMove[]; // Live realtime preview of opponent drafting tiles
 	turnStartTime: number;

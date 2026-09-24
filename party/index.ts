@@ -379,10 +379,12 @@ export default class ScrabbleServer implements Party.Server {
 		this.broadcastState();
 	}
 
-	checkDeadlock(player: ScrabblePlayer): boolean {
+	checkDeadlock(): boolean {
 		if (!this.state.allowDeadlock) return false;
-		const maxPasses = this.state.tileBag.length === 0 ? 2 : 6;
-		if (this.state.consecutivePasses >= maxPasses || player.consecutivePasses >= 3) {
+		if (
+			this.state.playerOrder.length === 2 &&
+			this.state.playerOrder.every((id) => (this.state.players[id]?.consecutivePasses || 0) >= 3)
+		) {
 			for (const c of this.party.getConnections()) {
 				this.sendNotification(c, '🏁 Match ended due to consecutive passes (Tournament Stalemate)!', 'info');
 			}
@@ -456,7 +458,7 @@ export default class ScrabbleServer implements Party.Server {
 			);
 		}
 
-		if (this.checkDeadlock(player)) {
+		if (this.checkDeadlock()) {
 			return;
 		}
 
@@ -590,7 +592,7 @@ export default class ScrabbleServer implements Party.Server {
 				);
 			}
 
-			if (this.checkDeadlock(player)) {
+			if (this.checkDeadlock()) {
 				return;
 			}
 
@@ -833,7 +835,7 @@ export default class ScrabbleServer implements Party.Server {
 
 			this.state.pendingChallenge = null;
 
-			if (player && this.checkDeadlock(player)) {
+			if (player && this.checkDeadlock()) {
 				return;
 			}
 
@@ -926,7 +928,7 @@ export default class ScrabbleServer implements Party.Server {
 			timestamp: Date.now()
 		});
 
-		if (this.checkDeadlock(player)) {
+		if (this.checkDeadlock()) {
 			return;
 		}
 
@@ -997,7 +999,7 @@ export default class ScrabbleServer implements Party.Server {
 		player.consecutivePasses = (player.consecutivePasses || 0) + 1;
 		this.state.consecutivePasses++;
 
-		if (this.checkDeadlock(player)) {
+		if (this.checkDeadlock()) {
 			return;
 		}
 

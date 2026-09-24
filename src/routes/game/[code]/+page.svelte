@@ -764,7 +764,7 @@
 						{/if}
 						<p class="text-[10px] text-slate-500 leading-relaxed pt-1.5 border-t border-slate-200/60 mt-0.5">
 							{#if gameState.allowDeadlock}
-								<strong class="text-slate-700 font-semibold">Note:</strong> When Enabled, the match ends automatically if both players pass 6 consecutive times (board deadlock), with the highest scoring player declared winner.
+								<strong class="text-slate-700 font-semibold">Note:</strong> When Enabled, the match ends automatically after each player passes 3 consecutive turns (board deadlock), with the highest scoring player declared winner.
 							{:else}
 								<strong class="text-slate-700 font-semibold">Note:</strong> When Disabled, the game will never end prematurely and continues until the tile bag is empty or a player resigns.
 							{/if}
